@@ -15,5 +15,6 @@ def test_collect_probe_does_not_copy_secrets(monkeypatch):
     monkeypatch.setenv("MACA_PATH", "/opt/maca")
     monkeypatch.setenv("SSH_PASSWORD", "must-not-leak")
     result = probe.collect_probe()
-    assert result["environment"] == {"MACA_PATH": "/opt/maca"}
+    assert result["environment"]["MACA_PATH"] == "/opt/maca"
+    assert set(result["environment"]).issubset(probe.SAFE_ENV_KEYS)
     assert "SSH_PASSWORD" not in result["environment"]

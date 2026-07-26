@@ -1,0 +1,105 @@
+{
+  "commands": [
+    {
+      "command": [
+        "mx-smi",
+        "--version"
+      ],
+      "exit_code": 0,
+      "output": "mx-smi  version: 2.2.12",
+      "status": "pass"
+    },
+    {
+      "command": [
+        "mx-smi"
+      ],
+      "exit_code": 0,
+      "output": "mx-smi  version: 2.2.12\n\n=================== MetaX System Management Interface Log ===================\nTimestamp                                         : Sun Jul 26 21:42:09 2026\n\nAttached GPUs                                     : 1\n+---------------------------------------------------------------------------------+\n| MX-SMI 2.2.12                      Kernel Mode Driver Version: 3.8.30           |\n| MACA Version: 3.5.3.20             BIOS Version: 1.33.5.0                       |\n|------------------+-----------------+---------------------+----------------------|\n| Board       Name | GPU   Persist-M | Bus-id              | GPU-Util      sGPU-M |\n| Pwr:Usage/Cap    | Temp       Perf | Memory-Usage        | GPU-State            |\n|==================+=================+=====================+======================|\n| 0     MetaX C500 | 0           Off | 0000:0f:00.0        | 0%          Disabled |\n| 55W / 350W       | 36C          P0 | 826/65536 MiB       | Available            |\n+------------------+-----------------+---------------------+----------------------+\n\n+---------------------------------------------------------------------------------+\n| Process:                                                                        |\n|  GPU                    PID         Process Name                 GPU Memory     |\n|                                                                  Usage(MiB)     |\n|=================================================================================|\n|  no process found                                                               |\n+---------------------------------------------------------------------------------+\n\nEnd of Log",
+      "status": "pass"
+    },
+    {
+      "command": [
+        "mxcc",
+        "--version"
+      ],
+      "status": "missing"
+    },
+    {
+      "command": [
+        "cucc",
+        "--version"
+      ],
+      "exit_code": 0,
+      "output": "mxcc version 1.0.0 (6477545d4d)\nTarget: x86_64-unknown-linux-gnu\nThread model: posix\nInstalledDir: /opt/maca-3.5.3/mxgpu_llvm/bin",
+      "status": "pass"
+    }
+  ],
+  "environment": {
+    "CUCC_PATH": "/opt/maca/tools/cu-bridge",
+    "CUDA_PATH": "/opt/maca/tools/cu-bridge",
+    "MACA_PATH": "/opt/maca",
+    "MXLOG_LEVEL": "err"
+  },
+  "hardware_detected": true,
+  "packages": {
+    "accelerate": null,
+    "deepspeed": null,
+    "peft": null,
+    "sglang": null,
+    "torch": "2.8.0+metax3.5.3.9",
+    "transformers": "4.57.6",
+    "triton": "3.0.0+metax3.5.3.9",
+    "trl": null,
+    "vllm": "0.17.0"
+  },
+  "platform": {
+    "machine": "x86_64",
+    "python": "3.10.10",
+    "release": "5.15.0-58-generic",
+    "system": "Linux"
+  },
+  "schema": "rwkv7-metax-c500-probe-v1",
+  "torch": {
+    "cuda_available": true,
+    "cuda_version": "11.6",
+    "device_count": 1,
+    "devices": [
+      {
+        "index": 0,
+        "major": 8,
+        "minor": 0,
+        "multi_processor_count": 104,
+        "name": "MetaX C500",
+        "total_memory_bytes": 68283269120
+      }
+    ],
+    "smoke": [
+      {
+        "cosine": 0.9999987483024597,
+        "dtype": "float16",
+        "elapsed_ms": 996.1310233920813,
+        "max_abs_error": 0.03316497802734375,
+        "shape": [
+          256,
+          256,
+          256
+        ],
+        "status": "pass"
+      },
+      {
+        "cosine": 0.9999992847442627,
+        "dtype": "bfloat16",
+        "elapsed_ms": 0.1250719651579857,
+        "max_abs_error": 0.2803382873535156,
+        "shape": [
+          256,
+          256,
+          256
+        ],
+        "status": "pass"
+      }
+    ],
+    "status": "pass",
+    "version": "2.8.0+metax3.5.3.9"
+  }
+}

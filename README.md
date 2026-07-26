@@ -45,8 +45,10 @@ performance claim.
 
 ## Status
 
-Repository bootstrap is complete. Exact-card implementation starts after the
-C500 SSH endpoint and installed MXMACA image are inventoried.
+The exact-card environment gate passes on one MetaX C500 64GB with MXMACA
+3.5.3.20 and MetaX PyTorch 2.8.0. The redacted artifact and checksum are in
+[`evidence/c500_environment_20260726`](evidence/c500_environment_20260726/README.md).
+HF, vLLM and SGLang model-level acceptance remains tracked independently.
 
 ## License
 
