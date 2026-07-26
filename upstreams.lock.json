@@ -1,0 +1,31 @@
+{
+  "schema": "rwkv7-metax-upstreams-v1",
+  "captured_at": "2026-07-26",
+  "upstreams": {
+    "hf_adapter": {
+      "url": "https://github.com/rwkv-rs/hf-adapter.git",
+      "ref": "main",
+      "commit": "9d7dbc9213f0fb6b021d8dd0e3a828dad5fcd4af"
+    },
+    "vllm_rwkv": {
+      "url": "https://github.com/rwkv-rs/vllm-rwkv.git",
+      "ref": "rwkv",
+      "commit": "7d16dbf88077834fbf93a0a65a882286319d7bd6"
+    },
+    "sglang_rwkv": {
+      "url": "https://github.com/Hakureirm/rwkv-sglang.git",
+      "ref": "main",
+      "commit": "1b88950f8aa82ca2f67195fc35c5b0927acae734"
+    },
+    "vllm_metax": {
+      "url": "https://gitee.com/metax-maca/vLLM-metax.git",
+      "ref": "master",
+      "commit": "e9f17cef56f43ce9ee6b3426819842307b739c28"
+    },
+    "sglang_metax": {
+      "url": "https://gitee.com/metax-maca/sglang.git",
+      "ref": "main",
+      "commit": "e55a35fbcd491eeb3743be9b021534512c6acf85"
+    }
+  }
+}
