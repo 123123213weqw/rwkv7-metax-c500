@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+dist/
+build/
+*.egg-info/
+evidence/local/*
+!evidence/local/.gitkeep
+worktrees/
+models/
+*.pth
+*.safetensors
+*.bin
+.env
+*credential*
+*secret*
