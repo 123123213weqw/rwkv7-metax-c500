@@ -1,0 +1,305 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 27d1b35..fb9b2ea 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -21,6 +21,10 @@ set(CMAKE_CUDA_STANDARD ${VLLM_CUDA_STANDARD})
+ set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+ set(CMAKE_HIP_STANDARD 20)
+ set(CMAKE_HIP_STANDARD_REQUIRED ON)
++option(USE_MACA "Build with the MetaX CUDA-compatible toolchain" OFF)
++if(USE_MACA)
++  add_compile_definitions(USE_MACA)
++endif()
+
+ # PyTorch headers require C++20; GCC < 11.3 has incomplete C++20 support.
+ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "11.3")
+@@ -432,17 +436,25 @@ if(VLLM_GPU_LANG STREQUAL "CUDA")
+     "csrc/libtorch_stable/rwkv7/rwkv7_wkv_fp32_v2.cu")
+
+   if(VLLM_RWKV_ONLY_BUILD)
+-    list(APPEND RWKV7_CUDA_SRCS
+-      "csrc/libtorch_stable/cuda_view.cu")
++    if(USE_MACA)
++      list(APPEND RWKV7_CUDA_SRCS "csrc/rwkv7_maca/cuda_view.cu")
++    else()
++      list(APPEND RWKV7_CUDA_SRCS "csrc/libtorch_stable/cuda_view.cu")
++    endif()
+   endif()
+
+   set(RWKV7_EXT_SRC
+     "csrc/libtorch_stable/rwkv7/rwkv7_fast_ops_fp16.cpp"
+     ${RWKV7_CUDA_SRCS}
+-    "csrc/libtorch_stable/rwkv7/rwkv7_registration.cpp"
+     "csrc/libtorch_stable/rwkv7/rwkv7_v3a_ops.cpp"
+     "csrc/libtorch_stable/rwkv7/rwkv7_wkv_fp16_v2.cpp"
+     "csrc/libtorch_stable/rwkv7/rwkv7_wkv_fp32_v2.cpp")
++  if(USE_MACA)
++    list(APPEND RWKV7_EXT_SRC "csrc/rwkv7_maca/registration.cpp")
++  else()
++    list(APPEND RWKV7_EXT_SRC
++      "csrc/libtorch_stable/rwkv7/rwkv7_registration.cpp")
++  endif()
+
+   set_source_files_properties(${RWKV7_CUDA_SRCS}
+     PROPERTIES COMPILE_FLAGS "-std=c++17 -O3 --extra-device-vectorization -Xptxas -O3")
+@@ -459,16 +471,27 @@ if(VLLM_GPU_LANG STREQUAL "CUDA")
+     SRCS "${RWKV7_CUDA_SRCS}"
+     CUDA_ARCHS "${CUDA_ARCHS}")
+
+-  define_extension_target(
+-    rwkv7_ops
+-    DESTINATION vllm
+-    LANGUAGE ${VLLM_GPU_LANG}
+-    SOURCES ${RWKV7_EXT_SRC}
+-    COMPILE_FLAGS ${VLLM_GPU_FLAGS}
+-    ARCHITECTURES ${VLLM_GPU_ARCHES}
+-    USE_SABI 3
+-    WITH_SOABI)
+-  target_compile_definitions(rwkv7_ops PRIVATE USE_CUDA)
++  if(USE_MACA)
++    define_extension_target(
++      rwkv7_ops
++      DESTINATION vllm
++      LANGUAGE ${VLLM_GPU_LANG}
++      SOURCES ${RWKV7_EXT_SRC}
++      COMPILE_FLAGS ${VLLM_GPU_FLAGS}
++      ARCHITECTURES ${VLLM_GPU_ARCHES}
++      WITH_SOABI)
++  else()
++    define_extension_target(
++      rwkv7_ops
++      DESTINATION vllm
++      LANGUAGE ${VLLM_GPU_LANG}
++      SOURCES ${RWKV7_EXT_SRC}
++      COMPILE_FLAGS ${VLLM_GPU_FLAGS}
++      ARCHITECTURES ${VLLM_GPU_ARCHES}
++      USE_SABI 3
++      WITH_SOABI)
++    target_compile_definitions(rwkv7_ops PRIVATE USE_CUDA)
++  endif()
+   target_link_libraries(rwkv7_ops PRIVATE CUDA::cublas CUDA::cublasLt)
+   if(VLLM_RWKV_ONLY_BUILD)
+     target_compile_definitions(rwkv7_ops PRIVATE VLLM_RWKV_RUNTIME_OPS)
+diff --git a/cmake/utils.cmake b/cmake/utils.cmake
+index fbd1220..af3671a 100644
+--- a/cmake/utils.cmake
++++ b/cmake/utils.cmake
+@@ -133,7 +133,14 @@ function (get_torch_gpu_compiler_flags OUT_GPU_FLAGS GPU_LANG)
+       "from torch.utils.cpp_extension import COMMON_NVCC_FLAGS; print(';'.join(COMMON_NVCC_FLAGS))"
+       "Failed to determine torch nvcc compiler flags")
+
+-    if (CUDA_VERSION VERSION_GREATER_EQUAL 11.8)
++    if(USE_MACA)
++      list(REMOVE_ITEM GPU_FLAGS
++        "-D__CUDA_NO_HALF_OPERATORS__"
++        "-D__CUDA_NO_HALF_CONVERSIONS__"
++        "-D__CUDA_NO_BFLOAT16_CONVERSIONS__"
++        "-D__CUDA_NO_HALF2_OPERATORS__")
++      list(APPEND GPU_FLAGS "-mllvm" "-metaxgpu-GridDim-UseLdu")
++    elseif(CUDA_VERSION VERSION_GREATER_EQUAL 11.8)
+       list(APPEND GPU_FLAGS "-DENABLE_FP8")
+     endif()
+     if (CUDA_VERSION VERSION_GREATER_EQUAL 12.0)
+diff --git a/csrc/libtorch_stable/rwkv7/rwkv7_wkv_fp16_v2.cu b/csrc/libtorch_stable/rwkv7/rwkv7_wkv_fp16_v2.cu
+index 51f0fa5..1ed3d79 100644
+--- a/csrc/libtorch_stable/rwkv7/rwkv7_wkv_fp16_v2.cu
++++ b/csrc/libtorch_stable/rwkv7/rwkv7_wkv_fp16_v2.cu
+@@ -44,6 +44,14 @@ template <int Bytes>
+ __device__ __forceinline__ void cp_async(void* smem, const void* global,
+                                          bool pred) {
+   static_assert(Bytes == 16 || Bytes == 8 || Bytes == 4);
++#ifdef USE_MACA
++  auto* destination = static_cast<unsigned char*>(smem);
++  const auto* source = static_cast<const unsigned char*>(global);
++#pragma unroll
++  for (int index = 0; index < Bytes; ++index) {
++    destination[index] = pred ? source[index] : 0;
++  }
++#else
+   const int bytes = pred ? Bytes : 0;
+   const unsigned int addr = __cvta_generic_to_shared(smem);
+   if constexpr (Bytes == 16) {
+@@ -53,19 +61,24 @@ __device__ __forceinline__ void cp_async(void* smem, const void* global,
+     asm volatile("cp.async.ca.shared.global [%0], [%1], %2, %3;" ::"r"(addr),
+                  "l"(global), "n"(Bytes), "r"(bytes));
+   }
++#endif
+ }
+
+ __device__ __forceinline__ void cp_commit() {
++#ifndef USE_MACA
+   asm volatile("cp.async.commit_group;\n" ::);
++#endif
+ }
+
+ template <int NWait>
+ __device__ __forceinline__ void cp_wait() {
++#ifndef USE_MACA
+   if constexpr (NWait == 0) {
+     asm volatile("cp.async.wait_all;\n" ::);
+   } else {
+     asm volatile("cp.async.wait_group %0;\n" ::"n"(NWait));
+   }
++#endif
+ }
+
+ __device__ __forceinline__ void prefetch_token(
+@@ -172,7 +185,7 @@ __global__ __launch_bounds__(HEAD_SIZE, 2) void wkv_fp16_kernel(
+     for (int j = 0; j < HALF2_HEAD_SIZE; ++j) {
+       state_dot_a2 = __hfma2(a[current][j], state[j], state_dot_a2);
+     }
+-    const half state_dot_a = state_dot_a2.x + state_dot_a2.y;
++    const half state_dot_a = __hadd(state_dot_a2.x, state_dot_a2.y);
+     state_dot_a2 = {state_dot_a, state_dot_a};
+     reinterpret_cast<half*>(w[current])[thread] = w_delta(
+         reinterpret_cast<half*>(w[current])[thread], w0, phase0 + offset);
+@@ -200,7 +213,7 @@ __global__ __launch_bounds__(HEAD_SIZE, 2) void wkv_fp16_kernel(
+       state[j] = recurrent;
+       output2 = __hfma2(recurrent, r[current][j], output2);
+     }
+-    y_ptr[token + thread] = output2.x + output2.y;
++    y_ptr[token + thread] = __hadd(output2.x, output2.y);
+     token += C;
+   }
+
+diff --git a/csrc/rwkv7_maca/cuda_view.cu b/csrc/rwkv7_maca/cuda_view.cu
+new file mode 100644
+index 0000000..9b68c6a
+--- /dev/null
++++ b/csrc/rwkv7_maca/cuda_view.cu
+@@ -0,0 +1,55 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: Copyright contributors to the vLLM project
++
++#include <torch/all.h>
++#include <torch/cuda.h>
++
++#include <cuda_runtime.h>
++
++torch::Tensor get_cuda_view_from_cpu_tensor(torch::Tensor& cpu_tensor) {
++  TORCH_CHECK(cpu_tensor.device().is_cpu(), "Input tensor must be on CPU");
++
++  if (cpu_tensor.numel() == 0) {
++    return torch::empty(cpu_tensor.sizes(),
++                        cpu_tensor.options().device(torch::kCUDA));
++  }
++
++  if (cpu_tensor.is_pinned()) {
++    void* host_ptr = const_cast<void*>(cpu_tensor.data_ptr());
++    void* device_ptr = nullptr;
++    cudaError_t error = cudaHostGetDevicePointer(&device_ptr, host_ptr, 0);
++    TORCH_CHECK(error == cudaSuccess, "cudaHostGetDevicePointer failed: ",
++                cudaGetErrorString(error));
++    return torch::from_blob(
++        device_ptr, cpu_tensor.sizes(), cpu_tensor.strides(),
++        [base = cpu_tensor](void*) {},
++        cpu_tensor.options().device(torch::kCUDA));
++  }
++
++  torch::Tensor contiguous_cpu = cpu_tensor.contiguous();
++  const size_t bytes = contiguous_cpu.nbytes();
++  void* host_ptr = nullptr;
++  cudaError_t error = cudaHostAlloc(&host_ptr, bytes, cudaHostAllocMapped);
++  TORCH_CHECK(error == cudaSuccess, "cudaHostAlloc failed: ",
++              cudaGetErrorString(error));
++
++  error = cudaMemcpy(host_ptr, contiguous_cpu.data_ptr(), bytes,
++                     cudaMemcpyDefault);
++  if (error != cudaSuccess) {
++    cudaFreeHost(host_ptr);
++    TORCH_CHECK(false, "cudaMemcpy failed: ", cudaGetErrorString(error));
++  }
++
++  void* device_ptr = nullptr;
++  error = cudaHostGetDevicePointer(&device_ptr, host_ptr, 0);
++  if (error != cudaSuccess) {
++    cudaFreeHost(host_ptr);
++    TORCH_CHECK(false, "cudaHostGetDevicePointer failed: ",
++                cudaGetErrorString(error));
++  }
++
++  return torch::from_blob(
++      device_ptr, contiguous_cpu.sizes(), contiguous_cpu.strides(),
++      [host_ptr](void*) { cudaFreeHost(host_ptr); },
++      contiguous_cpu.options().device(torch::kCUDA));
++}
+diff --git a/csrc/rwkv7_maca/registration.cpp b/csrc/rwkv7_maca/registration.cpp
+new file mode 100644
+index 0000000..ebcd457
+--- /dev/null
++++ b/csrc/rwkv7_maca/registration.cpp
+@@ -0,0 +1,21 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: Copyright contributors to the vLLM project
++
++#include "core/registration.h"
++
++#include <torch/all.h>
++#include <torch/library.h>
++
++torch::Tensor get_cuda_view_from_cpu_tensor(torch::Tensor& cpu_tensor);
++
++#ifdef VLLM_RWKV_RUNTIME_OPS
++TORCH_LIBRARY_FRAGMENT(_C, ops) {
++  ops.def("get_cuda_view_from_cpu_tensor(Tensor cpu_tensor) -> Tensor");
++}
++
++TORCH_LIBRARY_IMPL(_C, CPU, ops) {
++  ops.impl("get_cuda_view_from_cpu_tensor", &get_cuda_view_from_cpu_tensor);
++}
++#endif
++
++REGISTER_EXTENSION(TORCH_EXTENSION_NAME)
+diff --git a/setup.py b/setup.py
+index 3110e76..9d009c9 100644
+--- a/setup.py
++++ b/setup.py
+@@ -21,6 +21,8 @@ from setuptools.command.build_ext import build_ext
+ from setuptools_scm import get_version
+ from torch.utils.cpp_extension import CUDA_HOME, ROCM_HOME
+
++USE_MACA = bool(getattr(torch.version, "maca", None))
++
+
+ def load_module_from_path(module_name, path):
+     spec = importlib.util.spec_from_file_location(module_name, path)
+@@ -137,6 +139,10 @@ def get_cmake_command() -> str:
+     override = os.getenv("VLLM_CMAKE_COMMAND")
+     if override:
+         return override
++    if USE_MACA:
++        maca_cmake = which("cmake_maca")
++        if maca_cmake:
++            return maca_cmake
+     if CUDA_HOME is not None and os.path.isfile(os.path.join(CUDA_HOME, "bin", "cucc")):
+         maca_cmake = which("cmake_maca")
+         if maca_cmake:
+@@ -214,9 +220,13 @@ def bundle_tcmalloc(build_lib: str) -> None:
+ class CMakeExtension(Extension):
+     def __init__(self, name: str, cmake_lists_dir: str = ".", **kwa) -> None:
+         py_limited_api = not is_freethreaded()
+-        if VLLM_BUILD_PROFILE == "rwkv" and name == "vllm._rapid_sampling":
++        if VLLM_BUILD_PROFILE == "rwkv" and (
++            name == "vllm._rapid_sampling"
++            or (USE_MACA and name == "vllm.rwkv7_ops")
++        ):
+             # sampling.cpp includes torch/extension.h, which requires the full
+-            # Python C API and cannot be compiled with Py_LIMITED_API.
++            # Python C API. Vendor PyTorch 2.8 also predates the libtorch stable
++            # headers used by the abi3 RWKV registration path.
+             py_limited_api = False
+         super().__init__(name, sources=[], py_limited_api=py_limited_api, **kwa)
+         self.cmake_lists_dir = os.path.abspath(cmake_lists_dir)
+@@ -300,6 +310,12 @@ class cmake_build_ext(build_ext):
+             # which can otherwise cause a regeneration loop after FetchContent.
+             "-DCMAKE_SUPPRESS_REGENERATION=ON",
+         ]
++        if USE_MACA:
++            cmake_args += [
++                "-DUSE_MACA=1",
++                "-DVLLM_CXX_STANDARD=17",
++                "-DVLLM_CUDA_STANDARD=17",
++            ]
+
+         verbose = envs.VERBOSE
+         if verbose:

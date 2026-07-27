@@ -1,0 +1,26 @@
+going to execute cmake from cmake_mock
+cmake version 3.31.10
+
+CMake suite maintained and supported by Kitware (kitware.com/cmake).
+Looking in indexes: http://mirrors.aliyun.com/pypi/simple, https://mirrors.aliyun.com/pypi/simple/
+Obtaining file://<private-workdir>/projects/vllm-rwkv-7d16dbf-full
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: vllm
+  Building editable for vllm (pyproject.toml): started
+  Building editable for vllm (pyproject.toml): still running...
+  Building editable for vllm (pyproject.toml): finished with status 'done'
+  Created wheel for vllm: filename=vllm-0.17.0+c500.rwkv-0.editable-cp310-cp310-linux_x86_64.whl size=11443 sha256=2e4a3c6ddf77015ff3ff8da9ca44d348f0a9034d8058db8bc01a49c2e647e777
+  Stored in directory: <private-workdir>/tmp/pip-ephem-wheel-cache-a4t3z4_f/wheels/d1/e0/22/4747817e14237f875a8683235c244f5922829de39ae1c566ed
+Successfully built vllm
+Installing collected packages: vllm
+  Attempting uninstall: vllm
+    Found existing installation: vllm 0.17.0
+    Not uninstalling vllm at /opt/conda/lib/python3.10/site-packages, outside environment <private-workdir>/venvs/vllm-rwkv
+    Can't uninstall 'vllm'. No files were found to uninstall.
+Successfully installed vllm-0.17.0+c500.rwkv
+
+[notice] A new release of pip available: 22.3.1 -> 26.1.2
+[notice] To update, run: pip install --upgrade pip

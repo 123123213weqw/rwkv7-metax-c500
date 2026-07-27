@@ -1,0 +1,10 @@
+{
+  "schema": "rwkv7-metax-patchset-v1",
+  "upstream": "vllm_rwkv",
+  "commit": "7d16dbf88077834fbf93a0a65a882286319d7bd6",
+  "patches": [
+    "patches/0001-build-with-cuda-compatible-cucc.patch",
+    "patches/0002-configure-native-language-standard.patch",
+    "patches/0003-build-rwkv-ops-with-maca.patch"
+  ]
+}

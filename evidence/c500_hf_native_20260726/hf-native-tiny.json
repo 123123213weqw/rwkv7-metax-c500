@@ -1,0 +1,72 @@
+{
+  "backend": "native_eager_no_fla",
+  "device": "MetaX C500",
+  "python": "3.10.10",
+  "rows": [
+    {
+      "batch_size": 2,
+      "cache_batch_select_size": 1,
+      "cache_handoff_cosine": 0.9999999403953552,
+      "dtype": "fp32",
+      "finite_grad_count": 69,
+      "forward_cosine_vs_cpu_fp32": 0.9999999403953552,
+      "forward_ms": 21.687611937522888,
+      "generated_token_ids": [
+        44,
+        48,
+        40,
+        2
+      ],
+      "peak_memory_bytes": 134415872,
+      "sequence_length": 8,
+      "status": "pass",
+      "trainable_parameter_tensor_count": 69,
+      "training_loss": 5.023932456970215
+    },
+    {
+      "batch_size": 2,
+      "cache_batch_select_size": 1,
+      "cache_handoff_cosine": 1.0000001192092896,
+      "dtype": "fp16",
+      "finite_grad_count": 69,
+      "forward_cosine_vs_cpu_fp32": 0.9999995827674866,
+      "forward_ms": 22.656335029751062,
+      "generated_token_ids": [
+        44,
+        48,
+        40,
+        2
+      ],
+      "peak_memory_bytes": 201460224,
+      "sequence_length": 8,
+      "status": "pass",
+      "trainable_parameter_tensor_count": 69,
+      "training_loss": 5.023983478546143
+    },
+    {
+      "batch_size": 2,
+      "cache_batch_select_size": 1,
+      "cache_handoff_cosine": 1.000000238418579,
+      "dtype": "bf16",
+      "finite_grad_count": 69,
+      "forward_cosine_vs_cpu_fp32": 0.9999823570251465,
+      "forward_ms": 22.64642110094428,
+      "generated_token_ids": [
+        44,
+        48,
+        40,
+        2
+      ],
+      "peak_memory_bytes": 201460224,
+      "sequence_length": 8,
+      "status": "pass",
+      "trainable_parameter_tensor_count": 69,
+      "training_loss": 5.022770881652832
+    }
+  ],
+  "schema": "rwkv7-metax-c500-hf-native-smoke-v1",
+  "source_commit": "9d7dbc9213f0fb6b021d8dd0e3a828dad5fcd4af",
+  "status": "pass",
+  "torch": "2.8.0+metax3.5.3.9",
+  "torch_cuda": "11.6"
+}

@@ -20,4 +20,10 @@ checkpoint metadata, mathematical oracles and evidence schemas.
   a state-aware shared-prefix test and measured hit-rate telemetry.
 - W8/W4 speed claims require lower footprint, end-to-end speed no slower than
   W16 on the exact shape, and logits/greedy quality gates.
+- Treat `acceptance_matrix.json` as the authoritative completion contract. All
+  six model sizes and all required shapes must have evidence; never aggregate a
+  partial model or batch result into a completed track.
+- Performance acceptance requires same-card, same-checkpoint, same-dtype and
+  same-shape RWKV-LM/Albatross comparisons. Missing or unavailable baselines are
+  `not_validated`, never inferred passes.
 - All commits and pull requests require a DCO sign-off.

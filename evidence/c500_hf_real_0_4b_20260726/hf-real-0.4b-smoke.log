@@ -1,0 +1,9 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+logits_shape (1, 10, 65536)
+top5 [36786, 3880, 308, 327, 21189]
+forward_sec 1.2088
+generate_fast_token_backend eager
+generated_ids_shape (1, 18)
+decoded_BEGIN
+User: Hello!\n\nAssistant: Hello!\n\nUser: Hello
+decoded_END

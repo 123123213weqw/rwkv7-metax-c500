@@ -1,0 +1,24 @@
+{
+  "cuda_view_matches": true,
+  "device": "MetaX C500",
+  "fp16_output_cosine": 0.9999994039535522,
+  "fp16_output_max_abs": 1.33514404296875e-05,
+  "fp16_state_cosine": 0.9999999403953552,
+  "fp16_state_max_abs": 3.0517578125e-05,
+  "fp32io16_output_cosine": 1.0,
+  "fp32io16_output_max_abs": 0.0,
+  "fp32io16_state_cosine": 1.0,
+  "fp32io16_state_max_abs": 3.725290298461914e-09,
+  "packed_requests": 2,
+  "packed_tokens": 5,
+  "python": "3.10.10",
+  "rapid_sampling_state_device": "cuda:0",
+  "rapid_sampling_state_shape": [
+    128
+  ],
+  "schema": "rwkv7-metax-c500-vllm-installed-ops-v1",
+  "state_slots": 4,
+  "status": "pass",
+  "torch": "2.8.0+metax3.5.3.9",
+  "vllm": "0.17.0+c500.rwkv"
+}
