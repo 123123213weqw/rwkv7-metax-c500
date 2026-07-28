@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "status": "pass",
+  "track": "vllm",
+  "public_api": "vllm.LLM",
+  "gate": "chunked_prefill_equivalence",
+  "model": "rwkv7-g1g-2.9b-20260526-ctx8192.pth",
+  "gpu": "MetaX C500",
+  "torch": "2.8.0+metax3.5.3.9",
+  "maca": "3.5.3.9",
+  "python": "3.10.10",
+  "batch_size": 2,
+  "prompt_lengths": [
+    129,
+    193
+  ],
+  "max_new_tokens": 4,
+  "baseline_max_num_batched_tokens": 512,
+  "chunked_max_num_batched_tokens": 64,
+  "forced_chunk_boundary": true,
+  "minimum_chunked_prefill_steps_from_budget": 6,
+  "greedy_output_match": true,
+  "rwkv7_cmix_nofc_disabled": true,
+  "baseline_init_elapsed_s": 37.7379271290265,
+  "baseline_generate_elapsed_s": 1.4726430890150368,
+  "baseline_peak_memory_mib": 5985.28271484375,
+  "chunked_init_elapsed_s": 38.6621315497905,
+  "chunked_generate_elapsed_s": 1.6929951929487288,
+  "chunked_peak_memory_mib": 5958.39013671875,
+  "output_ids": [
+    [
+      4018,
+      314,
+      90,
+      316
+    ],
+    [
+      1135,
+      112,
+      77,
+      110
+    ]
+  ]
+}

@@ -47,6 +47,13 @@ public-engine performance claim.
 
 The public `vllm.LLM` 2.9B mixed-length batch gate is recorded in
 `evidence/c500_vllm_engine_20260728`. It proves basic public Engine loading and
-multi-step generation on C500, not the remaining chunk-boundary prefill,
-continuous batching, state-cache, performance, parallel, quantization, or
-speculative-decoding gates.
+multi-step generation on C500. Chunk-boundary prefill, continuous batching,
+state-cache, performance, parallel, quantization, and speculative decoding are
+separate gates.
+
+The public 2.9B forced chunk-boundary A/B gate is recorded in
+`evidence/c500_vllm_chunked_prefill_20260728`. With prompt lengths 129/193, the
+64-token scheduler budget requires at least six prefill steps and reproduces
+the 512-token-budget baseline output exactly. This closes one exact
+chunked-prefill correctness cell, not continuous batching, state-cache reuse,
+or the full model/shape matrix.
