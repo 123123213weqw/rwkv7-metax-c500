@@ -1,0 +1,38 @@
+diff --git a/tests/test_rwkv_reduced_profile_spawn.py b/tests/test_rwkv_reduced_profile_spawn.py
+new file mode 100644
+--- /dev/null
++++ b/tests/test_rwkv_reduced_profile_spawn.py
+@@ -0,0 +1,22 @@
++# SPDX-License-Identifier: Apache-2.0
++# 2026 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.
++
++import vllm_metax
++
++
++def test_reduced_profile_defaults_to_spawn(monkeypatch) -> None:
++    monkeypatch.delenv("VLLM_WORKER_MULTIPROC_METHOD", raising=False)
++    monkeypatch.setattr(vllm_metax, "_is_rwkv_reduced_build", lambda: True)
++
++    vllm_metax._configure_rwkv_reduced_profile()
++
++    assert vllm_metax.os.environ["VLLM_WORKER_MULTIPROC_METHOD"] == "spawn"
++
++
++def test_reduced_profile_preserves_explicit_multiproc_override(monkeypatch) -> None:
++    monkeypatch.setenv("VLLM_WORKER_MULTIPROC_METHOD", "fork")
++    monkeypatch.setattr(vllm_metax, "_is_rwkv_reduced_build", lambda: True)
++
++    vllm_metax._configure_rwkv_reduced_profile()
++
++    assert vllm_metax.os.environ["VLLM_WORKER_MULTIPROC_METHOD"] == "fork"
+diff --git a/vllm_metax/__init__.py b/vllm_metax/__init__.py
+--- a/vllm_metax/__init__.py
++++ b/vllm_metax/__init__.py
+@@ -35,6 +35,7 @@
+ def _configure_rwkv_reduced_profile() -> None:
+     if _is_rwkv_reduced_build():
+         os.environ.setdefault("VLLM_RWKV7_DISABLE_CMIX_NOFC", "1")
++        os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", "spawn")
+ 
+ 
+ def collect_env() -> None:

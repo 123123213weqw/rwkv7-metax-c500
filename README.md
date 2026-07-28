@@ -62,8 +62,40 @@ The locked RWKV vLLM reduced profile now builds and installs its native WKV,
 rapid-sampling and allocator modules on C500. Both FP32-state/FP16-IO and
 FP16-state packed WKV operators pass numerical gates; see
 [`evidence/c500_vllm_native_build_20260727`](evidence/c500_vllm_native_build_20260727/README.md).
-Public-engine vLLM, optimized HF and SGLang acceptance remain tracked
-independently from these completed smoke and operator gates.
+The first public `sglang.Engine` mixed-length batch gate passes on the 0.4B
+checkpoint with eager correctness settings; see
+[`evidence/c500_sglang_engine_20260727`](evidence/c500_sglang_engine_20260727/README.md).
+The 0.4B public SGLang recurrent prefix-state cache gate now uses
+`MambaRadixCache`: four shared requests each restore 128 cached tokens, the
+unrelated control remains a miss, and radix-on output exactly matches the
+radix-off baseline. A separate ordinary-language `chunked_prefill_size=64`
+probe also preserves greedy tokens and top-logprob values. The primary
+latency row is neutral and the automatic cache pool has a material memory
+cost, so this is a correctness and hit-rate result rather than a speed claim;
+see [`evidence/c500_sglang_state_prefix_cache_20260728`](evidence/c500_sglang_state_prefix_cache_20260728/README.md).
+The first public `vllm.LLM` mixed-length batch gate passes on the official 2.9B
+checkpoint with eager correctness settings and the C500-safe dense channel-mix
+route; see
+[`evidence/c500_vllm_engine_20260728`](evidence/c500_vllm_engine_20260728/README.md).
+The 2.9B public vLLM forced chunk-boundary A/B also reproduces its unchunked
+baseline exactly for prompt lengths 129/193; see
+[`evidence/c500_vllm_chunked_prefill_20260728`](evidence/c500_vllm_chunked_prefill_20260728/README.md).
+The 2.9B public vLLM state-slot gate also matches solo generation under A/B and
+B/A batch order and after completed-slot reuse; see
+[`evidence/c500_vllm_state_slots_20260728`](evidence/c500_vllm_state_slots_20260728/README.md).
+The 2.9B public vLLM asynchronous gate submits request B only after request A
+starts streaming, schedules B before A completes, and reproduces both solo
+greedy references exactly; see
+[`evidence/c500_vllm_dynamic_batch_20260728`](evidence/c500_vllm_dynamic_batch_20260728/README.md).
+The 2.9B public vLLM recurrent prefix-state cache gate restores 128 cached
+tokens for four shared-prefix requests, keeps an unrelated control at zero,
+reaches an 80% request hit rate and preserves every greedy token; shared-prefix
+median TTFT is 29.9% lower in the cache-enabled A/B. See
+[`evidence/c500_vllm_state_prefix_cache_20260728`](evidence/c500_vllm_state_prefix_cache_20260728/README.md).
+Optimized HF and the remaining full chunked-prefill matrix, continuously
+arriving batch/model matrix, state-cache eviction/preemption, performance
+matrix, parallelism, quantization and speculative gates remain tracked
+independently from these completed exact Engine and operator cells.
 
 ## License
 

@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "status": "pass",
+  "track": "vllm",
+  "public_api": "vllm.LLM",
+  "gate": "per_request_state_slot_isolation",
+  "model": "rwkv7-g1g-2.9b-20260526-ctx8192.pth",
+  "gpu": "MetaX C500",
+  "torch": "2.8.0+metax3.5.3.9",
+  "maca": "3.5.3.9",
+  "python": "3.10.10",
+  "prompt_lengths": {
+    "request_a": 33,
+    "request_b": 47
+  },
+  "max_new_tokens": 8,
+  "solo_vs_batch_ab_match": true,
+  "solo_vs_batch_ba_match": true,
+  "post_completion_slot_reuse_smoke": true,
+  "rwkv7_cmix_nofc_disabled": true,
+  "solo_init_elapsed_s": 37.249736819416285,
+  "solo_generate_elapsed_s": 1.783396712038666,
+  "solo_peak_memory_mib": 5956.6298828125,
+  "batched_init_elapsed_s": 37.7726579089649,
+  "batched_generate_elapsed_s": 1.6652738582342863,
+  "batched_peak_memory_mib": 5960.0458984375,
+  "output_ids_by_request": {
+    "request_a": [
+      82,
+      116,
+      84,
+      89,
+      86,
+      88,
+      90,
+      91
+    ],
+    "request_b": [
+      120,
+      119,
+      123,
+      125,
+      126,
+      127,
+      128,
+      127
+    ]
+  }
+}

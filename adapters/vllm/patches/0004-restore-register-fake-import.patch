@@ -1,0 +1,29 @@
+diff --git a/vllm/_custom_ops.py b/vllm/_custom_ops.py
+index e83cad0..7075028 100644
+--- a/vllm/_custom_ops.py
++++ b/vllm/_custom_ops.py
+@@ -5,6 +5,10 @@ from enum import IntEnum
+ from typing import Literal
+ 
+ import torch
++try:
++    from torch.library import register_fake
++except ImportError:
++    from torch.library import impl_abstract as register_fake
+ 
+ import vllm.envs as envs
+ from vllm.logger import init_logger
+@@ -95,6 +99,13 @@ if hasattr(torch.ops, "_C") and hasattr(torch.ops._C, "scaled_fp4_quant"):
+         m = input.numel() // n
+         return create_fp4_output_tensors(m, n, input.device, is_sf_swizzled_layout)
+ 
++
++if (
++    hasattr(torch.ops, "_C")
++    and hasattr(torch.ops._C, "scaled_fp4_quant")
++    and hasattr(torch.ops._C.scaled_fp4_quant, "out")
++):
++
+     @register_fake("_C::scaled_fp4_quant.out")
+     def _scaled_fp4_quant_out_fake(
+         input: torch.Tensor,

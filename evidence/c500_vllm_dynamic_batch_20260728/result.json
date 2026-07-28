@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "status": "pass",
+  "track": "vllm",
+  "public_api": "vllm.v1.engine.async_llm.AsyncLLM",
+  "gate": "continuous_arrival_dynamic_batch",
+  "model": "rwkv7-g1g-2.9b-20260526-ctx8192.pth",
+  "gpu": "MetaX C500",
+  "torch": "2.8.0+metax3.5.3.9",
+  "maca": "3.5.3.9",
+  "python": "3.10.10",
+  "prompt_lengths": {
+    "request_a": 33,
+    "request_b": 47
+  },
+  "max_new_tokens": 24,
+  "scheduler": {
+    "async_scheduling": true,
+    "stream_interval": 1,
+    "max_num_batched_tokens": 128,
+    "max_num_seqs": 8
+  },
+  "greedy_output_match": true,
+  "request_b_submitted_while_a_active": true,
+  "request_b_scheduled_before_a_finished": true,
+  "complete_output_lengths": true,
+  "rwkv7_cmix_nofc_disabled": true,
+  "worker_multiproc_method": "spawn",
+  "c500_spawn_enabled": true,
+  "init_elapsed_s": 59.07377586886287,
+  "reference_elapsed_s": {
+    "request_a": 2.165157969109714,
+    "request_b": 0.5990080772899091
+  },
+  "dynamic_elapsed_s": 0.4684048779308796,
+  "timeline_s": {
+    "request_a_started": 6.703799590468407e-05,
+    "request_a_first_event": 0.03566768020391464,
+    "request_b_submitted": 0.03570264205336571,
+    "request_b_started": 0.0357426879927516,
+    "request_b_first_event": 0.13408623030409217,
+    "request_a_finished": 0.3795920582488179,
+    "request_b_finished": 0.4684048779308796
+  },
+  "stream_event_counts": {
+    "request_a": 24,
+    "request_b": 24
+  },
+  "output_ids_by_request": {
+    "request_a": [
+      82,
+      116,
+      84,
+      89,
+      86,
+      91,
+      92,
+      97,
+      96,
+      95,
+      94,
+      95,
+      94,
+      95,
+      94,
+      95,
+      94,
+      95,
+      94,
+      95,
+      94,
+      95,
+      94,
+      95
+    ],
+    "request_b": [
+      120,
+      119,
+      114,
+      121,
+      120,
+      124,
+      123,
+      126,
+      127,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128
+    ]
+  }
+}

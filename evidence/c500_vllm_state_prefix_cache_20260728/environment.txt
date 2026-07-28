@@ -1,0 +1,45 @@
+2026-07-28T10:33:03+08:00
+
+mx-smi  version: 2.2.12
+
+mx-smi  version: 2.2.12
+
+=================== MetaX System Management Interface Log ===================
+Timestamp                                         : Tue Jul 28 10:33:03 2026
+
+Attached GPUs                                     : 1
++---------------------------------------------------------------------------------+
+| MX-SMI 2.2.12                      Kernel Mode Driver Version: 3.8.30           |
+| MACA Version: 3.5.3.20             BIOS Version: 1.33.5.0                       |
+|------------------+-----------------+---------------------+----------------------|
+| Board       Name | GPU   Persist-M | Bus-id              | GPU-Util      sGPU-M |
+| Pwr:Usage/Cap    | Temp       Perf | Memory-Usage        | GPU-State            |
+|==================+=================+=====================+======================|
+| 0     MetaX C500 | 0           Off | 0000:12:00.0        | 0%          Disabled |
+| 59W / 350W       | 35C          P0 | 826/65536 MiB       | Available            |
++------------------+-----------------+---------------------+----------------------+
+
++---------------------------------------------------------------------------------+
+| Process:                                                                        |
+|  GPU                    PID         Process Name                 GPU Memory     |
+|                                                                  Usage(MiB)     |
+|=================================================================================|
+|  no process found                                                               |
++---------------------------------------------------------------------------------+
+
+End of Log
+INFO 07-28 10:33:05 [__init__.py:52] Available plugins for group vllm.platform_plugins:
+INFO 07-28 10:33:05 [__init__.py:54] - metax -> vllm_metax:register
+INFO 07-28 10:33:05 [__init__.py:57] All plugins in this group will be loaded. Set `VLLM_PLUGINS` to control which plugins to load.
+/path/to/vllm-metax/vllm_metax/__init__.py:6: RuntimeWarning: Failed to read commit hash:
+No module named 'vllm_metax._version'
+  from .version import __version__, __version_tuple__  # noqa: F401
+INFO 07-28 10:33:05 [__init__.py:237] Platform plugin metax is activated
+INFO 07-28 10:33:05 [envs.py:116] Plugin sets VLLM_USE_FLASHINFER_SAMPLER to False. Reason: flashinfer sampler are not supported on maca
+INFO 07-28 10:33:05 [envs.py:116] Plugin sets VLLM_ENGINE_READY_TIMEOUT_S to 3600. Reason: set timeout to 3600s for model loading
+INFO 07-28 10:33:05 [envs.py:116] Plugin sets VLLM_FLOAT32_MATMUL_PRECISION to high. Reason: set float32 matmul precision to high for better performance on Maca platform
+python=3.10.10
+torch=2.8.0+metax3.5.3.9
+maca=3.5.3.9
+vllm=0.17.0+c500.rwkv
+3d118ed77fe94e63e6fc0a6afd5a4fac49fe70da4e3d9d91b628951bb55dd798  /path/to/rwkv7-g1g-2.9b-20260526-ctx8192.pth

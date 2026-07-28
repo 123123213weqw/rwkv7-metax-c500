@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "status": "pass",
+  "track": "sglang",
+  "public_api": "sglang.Engine",
+  "model": "rwkv7-g1d-0.4b-sglang",
+  "gpu": "MetaX C500",
+  "torch": "2.8.0+metax3.5.3.9",
+  "maca": "3.5.3.9",
+  "python": "3.10.10",
+  "batch_size": 2,
+  "prompt_lengths": [
+    4,
+    5
+  ],
+  "max_new_tokens": 4,
+  "elapsed_s": 28.50994249107316,
+  "output_ids": [
+    [
+      5,
+      6,
+      7,
+      8
+    ],
+    [
+      7,
+      7,
+      7,
+      7
+    ]
+  ]
+}

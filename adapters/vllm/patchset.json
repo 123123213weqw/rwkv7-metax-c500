@@ -5,6 +5,12 @@
   "patches": [
     "patches/0001-build-with-cuda-compatible-cucc.patch",
     "patches/0002-configure-native-language-standard.patch",
-    "patches/0003-build-rwkv-ops-with-maca.patch"
+    "patches/0003-build-rwkv-ops-with-maca.patch",
+    "patches/0004-restore-register-fake-import.patch",
+    "patches/0005-enable-rapid-sampling-on-cuda-like-platforms.patch",
+    "patches/0006-support-vendor-triton-without-knobs.patch",
+    "patches/0007-mark-triton-pointer-type-constexpr.patch",
+    "patches/0008-disable-unvalidated-cmix-nofc.patch",
+    "patches/0009-support-rwkv-recurrent-prefix-state-cache.patch"
   ]
 }
