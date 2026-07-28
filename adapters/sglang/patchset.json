@@ -3,6 +3,7 @@
   "upstream": "sglang_metax",
   "commit": "e55a35fbcd491eeb3743be9b021534512c6acf85",
   "patches": [
-    "patches/0001-port-rwkv7-to-metax-sglang.patch"
+    "patches/0001-port-rwkv7-to-metax-sglang.patch",
+    "patches/0002-enable-rwkv-state-aware-radix-cache.patch"
   ]
 }

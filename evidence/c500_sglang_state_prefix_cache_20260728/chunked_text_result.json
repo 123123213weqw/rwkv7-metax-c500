@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "status": "pass",
+  "track": "sglang",
+  "public_api": "sglang.Engine",
+  "gate": "rwkv_recurrent_prefix_state_cache_chunked_text",
+  "model": "rwkv7-g1d-0.4b-sglang",
+  "gpu": "MetaX C500",
+  "common_prefix_length": 128,
+  "chunked_prefill_size": 64,
+  "prompt_lengths": [139, 139, 136, 135, 17],
+  "cold_batch_cached_tokens": [0, 128, 128, 128, 0],
+  "cached_tokens": [128, 128, 128, 128, 0],
+  "shared_prefix_hits": [true, true, true, true],
+  "control_cache_miss": true,
+  "request_hit_rate": 0.8,
+  "token_hit_rate": 0.904593639575972,
+  "greedy_output_match": true,
+  "cold_batch_elapsed_s": 0.4614229630678892,
+  "cache_generate_elapsed_s": 0.29190675588324666,
+  "cache_to_cold_batch_elapsed_ratio": 0.632622949543797,
+  "baseline_output_ids": [
+    [11, 40301, 59, 11, 6699, 31356, 63528, 63842],
+    [28851, 6957, 22763, 60342, 39802, 31475, 38981, 22590],
+    [20996, 38499, 51030, 4600, 32227, 4601, 52669, 22590],
+    [261, 66, 51328, 39802, 37943, 31475, 56920, 38418],
+    [261, 6699, 59725, 4600, 332, 31307, 4706, 22590]
+  ],
+  "output_ids": [
+    [11, 40301, 59, 11, 6699, 31356, 63528, 63842],
+    [28851, 6957, 22763, 60342, 39802, 31475, 38981, 22590],
+    [20996, 38499, 51030, 4600, 32227, 4601, 52669, 22590],
+    [261, 66, 51328, 39802, 37943, 31475, 56920, 38418],
+    [261, 6699, 59725, 4600, 332, 31307, 4706, 22590]
+  ],
+  "decoded_outputs": [
+    "\nAnswer:\nThe main engineering requirement",
+    " Explain why recurrent state must match the",
+    " The first benefit is that it reduces the",
+    "\n\nA correct state cache must preserve every",
+    "\n\nThe following is a list of the"
+  ],
+  "comparison_semantics": "cold radix tree versus explicitly warmed radix tree; the cold batch may share prefixes internally"
+}

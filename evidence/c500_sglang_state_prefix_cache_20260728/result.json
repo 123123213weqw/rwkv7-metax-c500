@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "status": "pass",
+  "track": "sglang",
+  "public_api": "sglang.Engine",
+  "gate": "rwkv_recurrent_prefix_state_cache",
+  "model": "rwkv7-g1d-0.4b-sglang",
+  "gpu": "MetaX C500",
+  "torch": "2.8.0+metax3.5.3.9",
+  "maca": "3.5.3.9",
+  "python": "3.10.10",
+  "common_prefix_length": 128,
+  "shared_request_count": 4,
+  "control_request_count": 1,
+  "prompt_lengths": [
+    145,
+    147,
+    151,
+    157,
+    151
+  ],
+  "max_new_tokens": 8,
+  "cached_tokens": [
+    128,
+    128,
+    128,
+    128,
+    0
+  ],
+  "shared_prefix_hits": [
+    true,
+    true,
+    true,
+    true
+  ],
+  "control_cache_miss": true,
+  "request_hit_rate": 0.8,
+  "token_hit_rate": 0.681757656458056,
+  "greedy_output_match": true,
+  "baseline_generate_elapsed_s": 0.34238349879160523,
+  "cache_generate_elapsed_s": 0.34374665515497327,
+  "baseline_shared_e2e_latency_median_s": 0.3419802680145949,
+  "cache_shared_e2e_latency_median_s": 0.3432486222591251,
+  "cache_to_baseline_shared_e2e_latency_ratio": 1.0037088521273283,
+  "baseline_gpu_memory_used_mib": 3005.96484375,
+  "cache_gpu_memory_used_mib": 23575.8046875,
+  "baseline_output_ids": [
+    [
+      96,
+      100,
+      96,
+      101,
+      96,
+      102,
+      96,
+      103
+    ],
+    [
+      114,
+      122,
+      114,
+      122,
+      114,
+      122,
+      114,
+      122
+    ],
+    [
+      2294,
+      2343,
+      120,
+      123,
+      121,
+      41,
+      123,
+      121
+    ],
+    [
+      2457,
+      2441,
+      2457,
+      2441,
+      2457,
+      2441,
+      2457,
+      2441
+    ],
+    [
+      233,
+      186,
+      129,
+      233,
+      186,
+      129,
+      233,
+      186
+    ]
+  ],
+  "output_ids": [
+    [96, 100, 96, 101, 96, 102, 96, 103],
+    [114, 122, 114, 122, 114, 122, 114, 122],
+    [2294, 2343, 120, 123, 121, 41, 123, 121],
+    [2457, 2441, 2457, 2441, 2457, 2441, 2457, 2441],
+    [233, 186, 129, 233, 186, 129, 233, 186]
+  ]
+}

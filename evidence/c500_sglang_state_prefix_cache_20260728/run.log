@@ -1,0 +1,13 @@
+[primary radix-off/radix-on gate]
+status=pass cached_tokens=128,128,128,128,0 request_hit_rate=0.8 token_hit_rate=0.681757656458056 greedy_output_match=true
+baseline_generate_elapsed_s=0.34238349879160523 cache_generate_elapsed_s=0.34374665515497327 shared_latency_ratio=1.0037088521273283
+baseline_gpu_memory_used_mib=3005.96484375 cache_gpu_memory_used_mib=23575.8046875
+
+[ordinary-language chunked prefill gate]
+status=pass chunked_prefill_size=64 cached_tokens=128,128,128,128,0 greedy_output_match=true
+cold_batch_elapsed_s=0.4614229630678892 cache_generate_elapsed_s=0.29190675588324666
+
+[ordinary-language logprob gate]
+status=pass chunked_prefill_size=64 baseline_cached_tokens=0 cache_cached_tokens=128
+output_ids_exact_match=true output_token_logprobs_exact_match=true output_top_logprobs_exact_match=true
+exit_code=0

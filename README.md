@@ -65,6 +65,14 @@ FP16-state packed WKV operators pass numerical gates; see
 The first public `sglang.Engine` mixed-length batch gate passes on the 0.4B
 checkpoint with eager correctness settings; see
 [`evidence/c500_sglang_engine_20260727`](evidence/c500_sglang_engine_20260727/README.md).
+The 0.4B public SGLang recurrent prefix-state cache gate now uses
+`MambaRadixCache`: four shared requests each restore 128 cached tokens, the
+unrelated control remains a miss, and radix-on output exactly matches the
+radix-off baseline. A separate ordinary-language `chunked_prefill_size=64`
+probe also preserves greedy tokens and top-logprob values. The primary
+latency row is neutral and the automatic cache pool has a material memory
+cost, so this is a correctness and hit-rate result rather than a speed claim;
+see [`evidence/c500_sglang_state_prefix_cache_20260728`](evidence/c500_sglang_state_prefix_cache_20260728/README.md).
 The first public `vllm.LLM` mixed-length batch gate passes on the official 2.9B
 checkpoint with eager correctness settings and the C500-safe dense channel-mix
 route; see
