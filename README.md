@@ -72,10 +72,13 @@ route; see
 The 2.9B public vLLM forced chunk-boundary A/B also reproduces its unchunked
 baseline exactly for prompt lengths 129/193; see
 [`evidence/c500_vllm_chunked_prefill_20260728`](evidence/c500_vllm_chunked_prefill_20260728/README.md).
-Optimized HF and the remaining full chunked-prefill matrix, continuous
-batching, state-cache, performance matrix, parallelism, quantization and
-speculative gates remain tracked independently from these completed Engine and
-operator gates.
+The 2.9B public vLLM state-slot gate also matches solo generation under A/B and
+B/A batch order and after completed-slot reuse; see
+[`evidence/c500_vllm_state_slots_20260728`](evidence/c500_vllm_state_slots_20260728/README.md).
+Optimized HF and the remaining full chunked-prefill matrix, continuously
+arriving batching, prefix-cache metrics, preemption, performance matrix,
+parallelism, quantization and speculative gates remain tracked independently
+from these completed Engine and operator gates.
 
 ## License
 

@@ -57,3 +57,10 @@ The public 2.9B forced chunk-boundary A/B gate is recorded in
 the 512-token-budget baseline output exactly. This closes one exact
 chunked-prefill correctness cell, not continuous batching, state-cache reuse,
 or the full model/shape matrix.
+
+The public 2.9B per-request state-slot gate is recorded in
+`evidence/c500_vllm_state_slots_20260728`. Two prompts reproduce their solo
+greedy outputs when submitted in A/B order and again in B/A order on the same
+Engine. This closes one exact recurrent-state isolation and completed-slot
+reuse cell. It is not prefix-cache reuse or hit-rate evidence and does not
+close continuously arriving dynamic batching or scheduler preemption.
