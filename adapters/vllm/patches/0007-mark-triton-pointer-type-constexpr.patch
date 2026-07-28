@@ -1,0 +1,14 @@
+diff --git a/vllm/v1/worker/gpu/buffer_utils.py b/vllm/v1/worker/gpu/buffer_utils.py
+index f8336fa0749df3c380b2c8930418f0ef711f4fb8..f061ba1678f5c7f84d1037298dbf4ee2c60750f3 100644
+--- a/vllm/v1/worker/gpu/buffer_utils.py
++++ b/vllm/v1/worker/gpu/buffer_utils.py
+@@ -310,7 +310,7 @@ def _apply_write_kernel(
+ 
+ 
+ @triton.jit
+-def _load_ptr(ptr_to_ptr, elem_dtype):
++def _load_ptr(ptr_to_ptr, elem_dtype: tl.constexpr):
+     ptr = tl.load(ptr_to_ptr)
+-    ptr = tl.cast(ptr, tl.pointer_type(elem_dtype))
++    ptr = tl.cast(ptr, tl.pointer_type(elem_dtype.value))
+     return tl.multiple_of(ptr, 16)

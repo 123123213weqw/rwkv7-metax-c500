@@ -7,9 +7,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def assert_patchset(track: str) -> None:
+def assert_patchset(track: str, manifest_name: str = "patchset.json") -> None:
     manifest = json.loads(
-        (ROOT / f"adapters/{track}/patchset.json").read_text(encoding="utf-8")
+        (ROOT / "adapters" / track / manifest_name).read_text(encoding="utf-8")
     )
     lock = json.loads((ROOT / "upstreams.lock.json").read_text(encoding="utf-8"))
     assert manifest["schema"] == "rwkv7-metax-patchset-v1"
@@ -27,3 +27,11 @@ def test_hf_patchset_is_locked_and_complete():
 
 def test_vllm_patchset_is_locked_and_complete():
     assert_patchset("vllm")
+
+
+def test_vllm_metax_patchset_is_locked_and_complete():
+    assert_patchset("vllm", "metax_patchset.json")
+
+
+def test_sglang_patchset_is_locked_and_complete():
+    assert_patchset("sglang")

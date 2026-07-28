@@ -1,0 +1,73 @@
+diff --git a/tests/test_jit_monitor.py b/tests/test_jit_monitor.py
+index 50261a479d9266122ec487bf9a89518f2ffbde27..78fc9b9280f8d2d1dbdadbcdeb75845a62b2c5f3 100644
+--- a/tests/test_jit_monitor.py
++++ b/tests/test_jit_monitor.py
+@@ -151,6 +151,22 @@ class TestActivateBasic:
+         with pytest.raises(ValueError, match="Unsupported JIT monitor mode"):
+             jit_monitor.activate(mode="panic")  # type: ignore[arg-type]
+ 
++    def test_vendor_triton_without_knobs_is_supported(self):
++        fake_triton = cast(Any, ModuleType("triton"))
++        with (
++            mock.patch.dict(
++                sys.modules,
++                {
++                    "triton": fake_triton,
++                    **_fake_cute_import_modules(_fake_cute_compile),
++                    **_fake_tilelang_import_modules(),
++                },
++            ),
++            mock.patch.object(jit_monitor, "HAS_TRITON", True),
++        ):
++            jit_monitor.activate()
++        assert jit_monitor.is_active()
++
+ 
+ class TestAutotuningPrint:
+     def test_enables_autotuning_print(self):
+diff --git a/vllm/utils/jit_monitor.py b/vllm/utils/jit_monitor.py
+index 4c3327283a3c455fe74498e204003f66d6a9f543..b977427ef969da4b709a3247fb8b06e0cb439c13 100644
+--- a/vllm/utils/jit_monitor.py
++++ b/vllm/utils/jit_monitor.py
+@@ -43,6 +43,17 @@ _tilelang_hook_installed: bool = False
+ _tilelang_jitimpl_compile_depth: int = 0
+ 
+ 
++def _get_triton_knobs() -> Any | None:
++    if not HAS_TRITON:
++        return None
++    try:
++        from triton import knobs  # type: ignore[import-untyped]
++    except ImportError:
++        logger.debug("Triton knobs API is unavailable; skipping Triton JIT hooks.")
++        return None
++    return knobs
++
++
+ def is_active() -> bool:
+     """Return whether the JIT compilation monitor is currently active."""
+     return _active
+@@ -90,9 +101,9 @@ def activate(*, mode: JitMonitorMode = "warn", verbose: bool = False) -> None:
+ 
+ def _setup_triton_autotuning_print() -> None:
+     """Enable ``TRITON_PRINT_AUTOTUNING`` unless the user opted out."""
+-    if not HAS_TRITON:
++    knobs = _get_triton_knobs()
++    if knobs is None:
+         return
+-    from triton import knobs  # type: ignore[import-untyped]
+ 
+     user_val = os.environ.get("TRITON_PRINT_AUTOTUNING")
+     if user_val == "0":
+@@ -232,9 +243,9 @@ def _log_triton_jit_compile(fn_name: str, kwargs) -> None:
+ 
+ def _setup_triton_jit_hook() -> None:
+     """Register a ``jit_post_compile_hook`` that warns on compilation."""
+-    if not HAS_TRITON:
++    knobs = _get_triton_knobs()
++    if knobs is None:
+         return
+-    from triton import knobs  # type: ignore[import-untyped]
+ 
+     existing_hook = knobs.runtime.jit_post_compile_hook
+ 

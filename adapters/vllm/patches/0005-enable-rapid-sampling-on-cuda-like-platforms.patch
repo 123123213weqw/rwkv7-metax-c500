@@ -1,0 +1,57 @@
+diff --git a/tests/v1/sample/test_topk_topp_sampler.py b/tests/v1/sample/test_topk_topp_sampler.py
+index a3c58e4ec7c0f140d61887619be50ca01556bad5..d48a6c87447117866125b286a234f628181937da 100644
+--- a/tests/v1/sample/test_topk_topp_sampler.py
++++ b/tests/v1/sample/test_topk_topp_sampler.py
+@@ -252,7 +252,7 @@ def test_rapid_sampler_handles_unsupported_cuda_capability(
+ 
+     class MockPlatform:
+         @staticmethod
+-        def is_cuda():
++        def is_cuda_alike():
+             return True
+ 
+         @staticmethod
+@@ -272,6 +272,30 @@ def test_rapid_sampler_handles_unsupported_cuda_capability(
+         assert not topk_topp_sampler.rapid_sampler_supported()
+ 
+ 
++def test_rapid_sampler_accepts_cuda_alike_platform(monkeypatch: pytest.MonkeyPatch):
++    from vllm.v1.sample.ops import topk_topp_sampler
++
++    class MockCapability:
++        major = 9
++
++    class MockPlatform:
++        @staticmethod
++        def is_cuda_alike():
++            return True
++
++        @staticmethod
++        def get_device_capability():
++            return MockCapability()
++
++    monkeypatch.setenv("VLLM_USE_RAPID_SAMPLER", "1")
++    monkeypatch.setattr(topk_topp_sampler, "current_platform", MockPlatform())
++    monkeypatch.setattr(
++        topk_topp_sampler, "_load_rapid_sampler_module", lambda: object()
++    )
++
++    assert topk_topp_sampler.rapid_sampler_supported()
++
++
+ @pytest.mark.skipif(
+     not RAPID_SAMPLER_PLATFORM_SUPPORTED,
+     reason="Rapid sampler requires CUDA compute capability >= 7.",
+diff --git a/vllm/v1/sample/ops/topk_topp_sampler.py b/vllm/v1/sample/ops/topk_topp_sampler.py
+index 85acb5fe70e3b231444f492b280cb1a2db2e7f09..a0c6bb5d9a804e607eb120a66738371b0717979a 100644
+--- a/vllm/v1/sample/ops/topk_topp_sampler.py
++++ b/vllm/v1/sample/ops/topk_topp_sampler.py
+@@ -74,7 +74,7 @@ def flashinfer_sampler_supported() -> bool:
+ 
+ def rapid_sampler_supported() -> bool:
+     """Decide whether the rapid-sampling CUDA sampler can be used."""
+-    if not current_platform.is_cuda():
++    if not current_platform.is_cuda_alike():
+         return False
+     if not envs.VLLM_USE_RAPID_SAMPLER:
+         return False

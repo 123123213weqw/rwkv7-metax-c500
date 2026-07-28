@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "status": "pass",
+  "track": "vllm",
+  "public_api": "vllm.LLM",
+  "model": "rwkv7-g1g-2.9b-20260526-ctx8192.pth",
+  "gpu": "MetaX C500",
+  "torch": "2.8.0+metax3.5.3.9",
+  "maca": "3.5.3.9",
+  "python": "3.10.10",
+  "batch_size": 2,
+  "prompt_lengths": [
+    4,
+    5
+  ],
+  "max_new_tokens": 4,
+  "init_elapsed_s": 37.660800422076136,
+  "generate_elapsed_s": 1.470820564776659,
+  "generated_tokens": 8,
+  "peak_memory_mib": 5952.82080078125,
+  "rwkv7_cmix_nofc_disabled": true,
+  "output_ids": [
+    [
+      5,
+      6,
+      7,
+      8
+    ],
+    [
+      10,
+      12,
+      13,
+      14
+    ]
+  ]
+}

@@ -62,8 +62,17 @@ The locked RWKV vLLM reduced profile now builds and installs its native WKV,
 rapid-sampling and allocator modules on C500. Both FP32-state/FP16-IO and
 FP16-state packed WKV operators pass numerical gates; see
 [`evidence/c500_vllm_native_build_20260727`](evidence/c500_vllm_native_build_20260727/README.md).
-Public-engine vLLM, optimized HF and SGLang acceptance remain tracked
-independently from these completed smoke and operator gates.
+The first public `sglang.Engine` mixed-length batch gate passes on the 0.4B
+checkpoint with eager correctness settings; see
+[`evidence/c500_sglang_engine_20260727`](evidence/c500_sglang_engine_20260727/README.md).
+The first public `vllm.LLM` mixed-length batch gate passes on the official 2.9B
+checkpoint with eager correctness settings and the C500-safe dense channel-mix
+route; see
+[`evidence/c500_vllm_engine_20260728`](evidence/c500_vllm_engine_20260728/README.md).
+Optimized HF and the remaining chunk-boundary prefill, continuous batching,
+state-cache, performance matrix, parallelism, quantization and speculative
+gates remain tracked independently from these completed Engine and operator
+gates.
 
 ## License
 
