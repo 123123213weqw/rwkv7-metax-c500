@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "status": "pass",
+  "track": "vllm",
+  "public_api": "vllm.LLM",
+  "gate": "rwkv_recurrent_prefix_state_cache",
+  "model": "rwkv7-g1g-2.9b-20260526-ctx8192.pth",
+  "gpu": "MetaX C500",
+  "torch": "2.8.0+metax3.5.3.9",
+  "maca": "3.5.3.9",
+  "python": "3.10.10",
+  "common_prefix_length": 128,
+  "shared_request_count": 4,
+  "control_request_count": 1,
+  "prompt_lengths": [
+    145,
+    147,
+    151,
+    157,
+    151
+  ],
+  "max_new_tokens": 8,
+  "cache_capacity": 16,
+  "cache_block_size": 64,
+  "cached_tokens": [
+    128,
+    128,
+    128,
+    128,
+    0
+  ],
+  "shared_prefix_hits": [
+    true,
+    true,
+    true,
+    true
+  ],
+  "control_cache_miss": true,
+  "request_hit_rate": 0.8,
+  "token_hit_rate": 0.681757656458056,
+  "greedy_output_match": true,
+  "baseline_generate_elapsed_s": 0.2435635062865913,
+  "cache_generate_elapsed_s": 0.2560367649421096,
+  "baseline_shared_ttft_median_s": 0.10372674465179443,
+  "cache_shared_ttft_median_s": 0.07267749309539795,
+  "cache_to_baseline_shared_ttft_ratio": 0.70066300971242,
+  "baseline_peak_memory_mib": 6004.77490234375,
+  "cache_peak_memory_mib": 5995.92724609375,
+  "rwkv7_cmix_nofc_disabled": true,
+  "output_ids": [
+    [
+      1845,
+      1898,
+      7819,
+      2019,
+      8257,
+      2145,
+      8758,
+      2271
+    ],
+    [
+      122,
+      124,
+      123,
+      125,
+      127,
+      126,
+      2441,
+      2457
+    ],
+    [
+      2294,
+      2343,
+      124,
+      127,
+      128,
+      2423,
+      2424,
+      195
+    ],
+    [
+      2530,
+      2567,
+      2568,
+      198,
+      132,
+      2532,
+      2546,
+      2601
+    ],
+    [
+      13964,
+      14034,
+      17307,
+      16060,
+      13836,
+      3134,
+      172,
+      3137
+    ]
+  ]
+}

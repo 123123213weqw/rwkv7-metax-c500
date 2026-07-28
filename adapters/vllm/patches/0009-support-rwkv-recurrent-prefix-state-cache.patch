@@ -1,0 +1,916 @@
+diff --git a/tests/model_executor/models/test_rwkv7.py b/tests/model_executor/models/test_rwkv7.py
+index 389bbfe64..b585c4e44 100644
+--- a/tests/model_executor/models/test_rwkv7.py
++++ b/tests/model_executor/models/test_rwkv7.py
+@@ -64,16 +64,23 @@ def test_rwkv7_cuda_ops_match_torch_reference():
+     torch.testing.assert_close(z, expected_z, rtol=0, atol=0)
+
+
+-def _new_request(req_id: str) -> NewRequestData:
++def _new_request(
++    req_id: str,
++    *,
++    prompt_token_ids: list[int] | None = None,
++    num_computed_tokens: int = 0,
++    cache_salt: str | None = None,
++) -> NewRequestData:
+     return NewRequestData(
+         req_id=req_id,
+-        prompt_token_ids=[1, 2, 3],
++        prompt_token_ids=prompt_token_ids or [1, 2, 3],
+         mm_features=[],
+         sampling_params=None,
+         pooling_params=None,
+         block_ids=(),
+-        num_computed_tokens=0,
++        num_computed_tokens=num_computed_tokens,
+         lora_request=None,
++        cache_salt=cache_salt,
+     )
+
+
+@@ -474,6 +481,9 @@ def _new_rwkv7_model_state(
+     hidden_size: int = 64,
+     head_size: int = 64,
+     num_attention_heads: int = 1,
++    state_prefix_cache: bool = False,
++    state_prefix_cache_capacity: int = 8,
++    state_prefix_cache_block_size: int = 64,
+ ) -> RWKV7ModelState:
+     hf_config = SimpleNamespace(
+         num_hidden_layers=num_hidden_layers,
+@@ -484,6 +494,11 @@ def _new_rwkv7_model_state(
+     vllm_config = SimpleNamespace(
+         model_config=SimpleNamespace(hf_config=hf_config),
+         scheduler_config=SimpleNamespace(max_num_seqs=max_num_reqs),
++        additional_config={
++            "rwkv_state_prefix_cache": state_prefix_cache,
++            "rwkv_state_prefix_cache_capacity": state_prefix_cache_capacity,
++            "rwkv_state_prefix_cache_block_size": state_prefix_cache_block_size,
++        },
+     )
+     return RWKV7ModelState(
+         vllm_config=vllm_config,
+@@ -700,7 +715,7 @@ def test_rwkv7_config_defaults_to_no_compile():
+     )
+
+
+-def test_rwkv7_config_disables_prefix_caching():
++def test_rwkv7_config_routes_prefix_caching_to_recurrent_state_cache():
+     vllm_config = SimpleNamespace(
+         model_config=SimpleNamespace(enforce_eager=False),
+         cache_config=SimpleNamespace(enable_prefix_caching=True),
+@@ -715,6 +730,10 @@ def test_rwkv7_config_disables_prefix_caching():
+     RWKV7ForCausalLMConfig.verify_and_update_config(vllm_config)
+
+     assert vllm_config.cache_config.enable_prefix_caching is False
++    assert vllm_config.additional_config["rwkv_state_prefix_cache"] is True
++    assert vllm_config.additional_config["rwkv_state_prefix_cache_capacity"] == 8
++    assert vllm_config.additional_config["rwkv_state_prefix_cache_block_size"] == 64
++
+
+
+ def test_rwkv7_allows_chunked_prefill_without_kv_cache():
+@@ -3438,6 +3457,81 @@ def test_rwkv7_model_state_reports_pending_prefill_state_postprocess():
+     assert not state.has_pending_postprocess_state()
+
+
++def test_rwkv7_model_state_restores_recurrent_prefix_snapshot():
++    state = _new_rwkv7_model_state(
++        max_num_reqs=2,
++        state_prefix_cache=True,
++        state_prefix_cache_capacity=2,
++        state_prefix_cache_block_size=2,
++    )
++    prompt_token_ids = [11, 12, 13, 14, 15]
++    state.add_request(
++        0,
++        _new_request("cold", prompt_token_ids=prompt_token_ids),
++    )
++    input_batch = _rwkv7_input_batch(
++        state,
++        idx_mapping_np=np.array([0], dtype=np.int32),
++        query_start_loc=torch.tensor([0, 2], dtype=torch.int32),
++        is_prefilling_np=np.array([True], dtype=np.bool_),
++        num_scheduled_tokens=np.array([2], dtype=np.int32),
++        num_computed_prefill_tokens_np=np.array([0], dtype=np.int32),
++        prefill_len_np=np.array([5], dtype=np.int32),
++    )
++
++    inputs = state.prepare_inputs(input_batch, req_states=None)
++    cold_row = state.req_slot_to_row[0]
++    inputs["shift_state"][:, :, cold_row].fill_(3)
++    inputs["wkv_state"][:, cold_row].fill_(5)
++    inputs["elapsed"][cold_row].fill_(2)
++    state.postprocess_state(inputs["idx_mapping"], 0)
++    assert state.state_prefix_cache is not None
++    assert len(state.state_prefix_cache) == 1
++
++    state.remove_request("cold")
++    state.add_request(
++        1,
++        _new_request(
++            "hit",
++            prompt_token_ids=prompt_token_ids,
++            num_computed_tokens=2,
++        ),
++    )
++    hit_row = state.req_slot_to_row[1]
++    assert torch.all(state.shift_state[:, :, hit_row] == 3)
++    assert torch.all(state.wkv_state[:, hit_row] == 5)
++    assert state.elapsed[hit_row].item() == 2
++
++
++def test_rwkv7_model_state_rejects_scheduler_hit_without_worker_snapshot():
++    state = _new_rwkv7_model_state(
++        max_num_reqs=2,
++        state_prefix_cache=True,
++        state_prefix_cache_block_size=2,
++    )
++
++    with pytest.raises(RuntimeError, match="without a matching worker state"):
++        state.add_request(
++            0,
++            _new_request(
++                "missing",
++                prompt_token_ids=[11, 12, 13],
++                num_computed_tokens=2,
++            ),
++        )
++
++
++def test_rwkv7_model_state_does_not_cache_salted_request():
++    state = _new_rwkv7_model_state(
++        max_num_reqs=2,
++        state_prefix_cache=True,
++        state_prefix_cache_block_size=2,
++    )
++    state.add_request(0, _new_request("salted", cache_salt="tenant-a"))
++
++    assert state._state_cache_tokens == {}
++
++
+ def test_rwkv7_non_last_pp_postprocesses_pending_prefill_when_all_decode_next():
+     from vllm.v1.worker.gpu.model_runner import ExecuteModelState, GPUModelRunner
+
+diff --git a/tests/v1/test_rwkv_state_prefix_cache.py b/tests/v1/test_rwkv_state_prefix_cache.py
+new file mode 100644
+index 000000000..e0957d8ea
+--- /dev/null
++++ b/tests/v1/test_rwkv_state_prefix_cache.py
+@@ -0,0 +1,115 @@
++# SPDX-License-Identifier: Apache-2.0
++# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
++
++from types import SimpleNamespace
++
++import pytest
++
++from vllm.v1.core.sched.scheduler import Scheduler
++from vllm.v1.rwkv_state_prefix_cache import (
++    RWKVStatePrefixCache,
++    is_rwkv_state_cache_position,
++    rwkv_state_cache_positions,
++    rwkv_state_prefix_key,
++)
++
++
++def test_rwkv_state_cache_positions_use_complete_blocks_only():
++    assert rwkv_state_cache_positions(191, 64) == (64, 128)
++    assert rwkv_state_cache_positions(128, 64) == (64, 128)
++    assert rwkv_state_cache_positions(0, 64) == ()
++
++
++def test_rwkv_state_cache_position_requires_complete_recomputable_block():
++    assert is_rwkv_state_cache_position(64, 130, 64)
++    assert not is_rwkv_state_cache_position(129, 130, 64)
++    assert not is_rwkv_state_cache_position(130, 130, 64)
++    assert not is_rwkv_state_cache_position(63, 130, 64)
++
++
++def test_rwkv_state_prefix_key_is_order_and_length_sensitive():
++    tokens = [1, 2, 3, 4]
++    assert rwkv_state_prefix_key(tokens, 3) == rwkv_state_prefix_key(tokens, 3)
++    assert rwkv_state_prefix_key(tokens, 3) != rwkv_state_prefix_key(tokens, 4)
++    assert rwkv_state_prefix_key(tokens, 3) != rwkv_state_prefix_key(
++        [1, 3, 2, 4], 3
++    )
++
++
++def test_rwkv_state_prefix_key_rejects_invalid_inputs():
++    with pytest.raises(ValueError, match="prefix length"):
++        rwkv_state_prefix_key([1, 2], 0)
++    with pytest.raises(ValueError, match="token id"):
++        rwkv_state_prefix_key([1, -1], 2)
++
++
++def test_rwkv_state_prefix_cache_finds_longest_and_evicts_lru():
++    cache = RWKVStatePrefixCache[str](capacity=2)
++    tokens = list(range(10))
++    key4 = rwkv_state_prefix_key(tokens, 4)
++    key8 = rwkv_state_prefix_key(tokens, 8)
++    cache.put(key4, "four")
++    cache.put(key8, "eight")
++
++    assert cache.find_longest(tokens, 9, 4) == (8, "eight")
++    cache.put(rwkv_state_prefix_key([99], 1), "other")
++
++    assert cache.get(key8) == "eight"
++    assert cache.get(key4) is None
++    cache.clear()
++    assert len(cache) == 0
++
++
++def _scheduler_with_rwkv_cache(block_size: int = 4) -> Scheduler:
++    scheduler = object.__new__(Scheduler)
++    scheduler.rwkv_state_prefix_cache = RWKVStatePrefixCache[int](capacity=4)
++    scheduler.rwkv_state_prefix_cache_block_size = block_size
++    return scheduler
++
++
++def _request(tokens: list[int], num_computed_tokens: int = 0) -> SimpleNamespace:
++    return SimpleNamespace(
++        prompt_token_ids=tokens,
++        prompt_embeds=None,
++        lora_request=None,
++        cache_salt=None,
++        skip_reading_prefix_cache=False,
++        num_prompt_tokens=len(tokens),
++        num_computed_tokens=num_computed_tokens,
++    )
++
++
++def test_scheduler_uses_longest_rwkv_state_prefix_hit():
++    scheduler = _scheduler_with_rwkv_cache()
++    request = _request(list(range(10)))
++    assert scheduler.rwkv_state_prefix_cache is not None
++    scheduler.rwkv_state_prefix_cache.put(
++        rwkv_state_prefix_key(request.prompt_token_ids, 4), 4
++    )
++    scheduler.rwkv_state_prefix_cache.put(
++        rwkv_state_prefix_key(request.prompt_token_ids, 8), 8
++    )
++
++    assert scheduler._get_rwkv_state_cache_hit(request) == 8
++
++
++def test_scheduler_rwkv_cache_split_stops_at_snapshot_boundaries():
++    scheduler = _scheduler_with_rwkv_cache()
++    request = _request(list(range(10)))
++
++    assert scheduler._rwkv_state_cache_aligned_split(request, 9) == 4
++    request.num_computed_tokens = 4
++    assert scheduler._rwkv_state_cache_aligned_split(request, 5) == 4
++    request.num_computed_tokens = 8
++    assert scheduler._rwkv_state_cache_aligned_split(request, 2) == 2
++    request.num_computed_tokens = 9
++    assert scheduler._rwkv_state_cache_aligned_split(request, 1) == 1
++
++
++def test_scheduler_registers_completed_output_not_optimistic_future_state():
++    scheduler = _scheduler_with_rwkv_cache()
++    request = _request(list(range(10)), num_computed_tokens=8)
++
++    scheduler._cache_rwkv_state_prefix(request, completed_tokens=4)
++
++    assert scheduler._get_rwkv_state_cache_hit(request) == 4
+diff --git a/vllm/model_executor/models/config.py b/vllm/model_executor/models/config.py
+index 91c1f5df9..416758489 100644
+--- a/vllm/model_executor/models/config.py
++++ b/vllm/model_executor/models/config.py
+@@ -615,9 +615,54 @@ class RWKV7ForCausalLMConfig(VerifyAndUpdateConfig):
+             )
+
+         cache_config = getattr(vllm_config, "cache_config", None)
++        state_prefix_cache_requested = bool(
++            cache_config is not None and cache_config.enable_prefix_caching
++        )
+         if cache_config is not None:
++            # RWKV recurrent state is not compatible with the generic KV block
++            # cache. Keep that path disabled and route the public flag to the
++            # dedicated recurrent-state cache instead.
+             cache_config.enable_prefix_caching = False
+
++        additional_config = getattr(vllm_config, "additional_config", None)
++        if additional_config is None:
++            additional_config = {}
++            setattr(vllm_config, "additional_config", additional_config)
++        elif not isinstance(additional_config, dict):
++            if state_prefix_cache_requested:
++                raise ValueError(
++                    "RWKV7 state prefix caching requires dict additional_config"
++                )
++            additional_config = None
++
++        if additional_config is not None:
++            capacity = int(
++                additional_config.get("rwkv_state_prefix_cache_capacity", 8)
++            )
++            block_size = int(
++                additional_config.get("rwkv_state_prefix_cache_block_size", 64)
++            )
++            if state_prefix_cache_requested and capacity <= 0:
++                raise ValueError(
++                    "rwkv_state_prefix_cache_capacity must be positive"
++                )
++            if state_prefix_cache_requested and block_size <= 0:
++                raise ValueError(
++                    "rwkv_state_prefix_cache_block_size must be positive"
++                )
++            if (
++                state_prefix_cache_requested
++                and getattr(vllm_config, "kv_transfer_config", None) is not None
++            ):
++                raise ValueError(
++                    "RWKV7 state prefix caching does not support KV transfer yet"
++                )
++            additional_config["rwkv_state_prefix_cache"] = (
++                state_prefix_cache_requested
++            )
++            additional_config["rwkv_state_prefix_cache_capacity"] = capacity
++            additional_config["rwkv_state_prefix_cache_block_size"] = block_size
++
+         scheduler_config = getattr(vllm_config, "scheduler_config", None)
+         if scheduler_config is not None:
+             token_budget = scheduler_config.max_num_scheduled_tokens
+diff --git a/vllm/v1/core/sched/output.py b/vllm/v1/core/sched/output.py
+index 5667482e9..c52be95a0 100644
+--- a/vllm/v1/core/sched/output.py
++++ b/vllm/v1/core/sched/output.py
+@@ -39,6 +39,7 @@ class NewRequestData:
+     block_ids: tuple[list[int], ...]
+     num_computed_tokens: int
+     lora_request: LoRARequest | None
++    cache_salt: str | None = None
+     prompt_embeds: "torch.Tensor | None" = None
+     prompt_is_token_ids: list[bool] | None = None
+
+@@ -61,6 +62,7 @@ class NewRequestData:
+             block_ids=block_ids,
+             num_computed_tokens=request.num_computed_tokens,
+             lora_request=request.lora_request,
++            cache_salt=request.cache_salt,
+             prompt_embeds=request.prompt_embeds,
+             prompt_is_token_ids=request.prompt_is_token_ids,
+             prefill_token_ids=prefill_token_ids,
+@@ -80,6 +82,7 @@ class NewRequestData:
+             f"block_ids={self.block_ids},"
+             f"num_computed_tokens={self.num_computed_tokens},"
+             f"lora_request={self.lora_request},"
++            f"cache_salt={self.cache_salt!r},"
+             f"prompt_embeds_shape={prompt_embeds_shape}"
+             ")"
+         )
+diff --git a/vllm/v1/core/sched/scheduler.py b/vllm/v1/core/sched/scheduler.py
+index 842b17164..c4daba4c9 100644
+--- a/vllm/v1/core/sched/scheduler.py
++++ b/vllm/v1/core/sched/scheduler.py
+@@ -60,6 +60,12 @@ from vllm.v1.metrics.perf import ModelMetrics, PerfStats
+ from vllm.v1.metrics.stats import PrefixCacheStats, SchedulerStats
+ from vllm.v1.outputs import DraftTokenIds, KVConnectorOutput, ModelRunnerOutput
+ from vllm.v1.request import Request, RequestStatus, StreamingUpdate
++from vllm.v1.rwkv_state_prefix_cache import (
++    RWKVStatePrefixCache,
++    get_rwkv_state_prefix_cache_config,
++    is_rwkv_state_cache_position,
++    rwkv_state_prefix_key,
++)
+ from vllm.v1.spec_decode.dynamic.utils import build_dynamic_sd_schedule_lookup
+ from vllm.v1.spec_decode.metrics import SpecDecodingStats
+ from vllm.v1.structured_output import StructuredOutputManager
+@@ -100,6 +106,22 @@ class Scheduler(SchedulerInterface):
+         self.use_rwkv_native_decode_wave = RWKVNativeDecodeWavePolicy.enabled_for_model(
+             model_config
+         )
++        (
++            rwkv_state_prefix_cache_enabled,
++            rwkv_state_prefix_cache_capacity,
++            self.rwkv_state_prefix_cache_block_size,
++        ) = get_rwkv_state_prefix_cache_config(vllm_config)
++        self.rwkv_state_prefix_cache: RWKVStatePrefixCache[int] | None = None
++        if rwkv_state_prefix_cache_enabled and self.use_rwkv_native_decode_wave:
++            self.rwkv_state_prefix_cache = RWKVStatePrefixCache(
++                rwkv_state_prefix_cache_capacity
++            )
++            logger.info(
++                "RWKV7 recurrent prefix cache enabled with capacity=%d and "
++                "block_size=%d",
++                rwkv_state_prefix_cache_capacity,
++                self.rwkv_state_prefix_cache_block_size,
++            )
+
+         # include_finished_set controls whether a separate set of finished
+         # request ids should be included in the EngineCoreOutputs returned
+@@ -423,6 +445,78 @@ class Scheduler(SchedulerInterface):
+         end = min((s for s in stops if start < s < end), default=end)
+         return max(end - start, 0)
+
++    @staticmethod
++    def _rwkv_state_cache_eligible(request: Request) -> bool:
++        return (
++            request.prompt_token_ids is not None
++            and request.prompt_embeds is None
++            and request.lora_request is None
++            and request.cache_salt is None
++        )
++
++    def _get_rwkv_state_cache_hit(self, request: Request) -> int:
++        cache = self.rwkv_state_prefix_cache
++        if (
++            cache is None
++            or request.skip_reading_prefix_cache
++            or not self._rwkv_state_cache_eligible(request)
++        ):
++            return 0
++        assert request.prompt_token_ids is not None
++        max_num_tokens = min(
++            request.num_prompt_tokens - 1,
++            len(request.prompt_token_ids) - 1,
++        )
++        num_tokens, _ = cache.find_longest(
++            request.prompt_token_ids,
++            max_num_tokens,
++            self.rwkv_state_prefix_cache_block_size,
++        )
++        return num_tokens
++
++    def _cache_rwkv_state_prefix(
++        self, request: Request, completed_tokens: int
++    ) -> None:
++        cache = self.rwkv_state_prefix_cache
++        if cache is None or not self._rwkv_state_cache_eligible(request):
++            return
++        num_tokens = completed_tokens
++        if not is_rwkv_state_cache_position(
++            num_tokens,
++            request.num_prompt_tokens,
++            self.rwkv_state_prefix_cache_block_size,
++        ):
++            return
++        assert request.prompt_token_ids is not None
++        cache.put(
++            rwkv_state_prefix_key(request.prompt_token_ids, num_tokens),
++            num_tokens,
++        )
++
++    def _rwkv_state_cache_aligned_split(
++        self,
++        request: Request,
++        num_new_tokens: int,
++        num_new_local_computed_tokens: int = 0,
++        num_external_computed_tokens: int = 0,
++    ) -> int:
++        if self.rwkv_state_prefix_cache is None:
++            return num_new_tokens
++        start = (
++            request.num_computed_tokens
++            + num_new_local_computed_tokens
++            + num_external_computed_tokens
++        )
++        last_cache_position = request.num_prompt_tokens - 1
++        if start >= last_cache_position:
++            return num_new_tokens
++
++        block_size = self.rwkv_state_prefix_cache_block_size
++        next_block_boundary = (start // block_size + 1) * block_size
++        if next_block_boundary < request.num_prompt_tokens:
++            return min(num_new_tokens, next_block_boundary - start)
++        return num_new_tokens
++
+     def schedule(self, throttle_prefills: bool = False) -> SchedulerOutput:
+         self.current_step += 1
+         # NOTE(woosuk) on the scheduling algorithm:
+@@ -555,6 +649,10 @@ class Scheduler(SchedulerInterface):
+                 num_new_tokens = self._mamba_block_aligned_split(
+                     request, num_new_tokens
+                 )
++            if self.rwkv_state_prefix_cache is not None:
++                num_new_tokens = self._rwkv_state_cache_aligned_split(
++                    request, num_new_tokens
++                )
+
+             if num_new_tokens == 0:
+                 # The request cannot be scheduled because one of the following
+@@ -772,15 +870,30 @@ class Scheduler(SchedulerInterface):
+                                 preempted=request.num_preemptions > 0,
+                             )
+                     else:
+-                        (
+-                            new_computed_blocks,
+-                            num_new_local_computed_tokens,
+-                            # Junction to pin (Marconi-style APC) so its
+-                            # sparse-retention state (Mamba block / sliding-window
+-                            # tail) survives retention and serves a later hit; 0
+-                            # if no uncached shared prefix was detected.
+-                            request.shared_prefix_boundary,
+-                        ) = self.kv_cache_manager.get_computed_blocks(request)
++                        if self.rwkv_state_prefix_cache is not None:
++                            new_computed_blocks = (
++                                self.kv_cache_manager.empty_kv_cache_blocks
++                            )
++                            num_new_local_computed_tokens = (
++                                self._get_rwkv_state_cache_hit(request)
++                            )
++                            request.shared_prefix_boundary = 0
++                            if self.kv_cache_manager.log_stats:
++                                stats = self.kv_cache_manager.prefix_cache_stats
++                                assert stats is not None
++                                stats.record(
++                                    num_tokens=request.num_tokens,
++                                    num_hits=num_new_local_computed_tokens,
++                                    preempted=request.num_preemptions > 0,
++                                )
++                        else:
++                            (
++                                new_computed_blocks,
++                                num_new_local_computed_tokens,
++                                # Junction to pin (Marconi-style APC) so its
++                                # sparse-retention state survives retention.
++                                request.shared_prefix_boundary,
++                            ) = self.kv_cache_manager.get_computed_blocks(request)
+
+                     # Get externally-cached tokens if using a KVConnector.
+                     if self.connector is not None:
+@@ -915,6 +1028,15 @@ class Scheduler(SchedulerInterface):
+                             break
+
+                 # Skip block alignment when setting up async receive (no local work).
++                if self.rwkv_state_prefix_cache is not None and not load_kv_async:
++                    num_new_tokens = self._rwkv_state_cache_aligned_split(
++                        request,
++                        num_new_tokens,
++                        num_new_local_computed_tokens,
++                        num_external_computed_tokens,
++                    )
++                    if num_new_tokens == 0:
++                        break
+                 if self.need_mamba_block_aligned_split and not load_kv_async:
+                     num_new_tokens = self._mamba_block_aligned_split(
+                         request,
+@@ -1621,6 +1743,21 @@ class Scheduler(SchedulerInterface):
+         kv_connector_output = model_runner_output.kv_connector_output
+         cudagraph_stats = model_runner_output.cudagraph_stats
+
++        rwkv_completed_tokens: dict[str, int] = {}
++        if self.rwkv_state_prefix_cache is not None:
++            for req_data in scheduler_output.scheduled_new_reqs:
++                rwkv_completed_tokens[req_data.req_id] = (
++                    req_data.num_computed_tokens
++                    + num_scheduled_tokens[req_data.req_id]
++                )
++            cached_reqs = scheduler_output.scheduled_cached_reqs
++            for req_id, num_computed_tokens in zip(
++                cached_reqs.req_ids, cached_reqs.num_computed_tokens
++            ):
++                rwkv_completed_tokens[req_id] = (
++                    num_computed_tokens + num_scheduled_tokens[req_id]
++                )
++
+         # Every GPU write enqueued by this and earlier steps has completed, so it is
+         # safe to return deferred-free blocks to the pool.
+         if self.defer_block_free and scheduler_output.total_num_scheduled_tokens > 0:
+@@ -1687,6 +1824,9 @@ class Scheduler(SchedulerInterface):
+                 # be set to None (in order to finish async KV transfer).
+                 # In this case, we use is_finished() to check.
+                 continue
++            completed_tokens = rwkv_completed_tokens.get(req_id)
++            if completed_tokens is not None:
++                self._cache_rwkv_state_prefix(request, completed_tokens)
+
+             req_index = model_runner_output.req_id_to_index[req_id]
+             generated_token_ids = (
+@@ -2384,6 +2524,9 @@ class Scheduler(SchedulerInterface):
+                 "which is not supported yet."
+             )
+
++        if reset_successful and self.rwkv_state_prefix_cache is not None:
++            self.rwkv_state_prefix_cache.clear()
++
+         if reset_connector:
+             reset_successful = self.reset_connector_cache() and reset_successful
+
+diff --git a/vllm/v1/rwkv_state_prefix_cache.py b/vllm/v1/rwkv_state_prefix_cache.py
+new file mode 100644
+index 000000000..897592521
+--- /dev/null
++++ b/vllm/v1/rwkv_state_prefix_cache.py
+@@ -0,0 +1,128 @@
++# SPDX-License-Identifier: Apache-2.0
++# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
++
++import sys
++from array import array
++from collections import OrderedDict
++from collections.abc import Sequence
++from hashlib import sha256
++from struct import pack
++from typing import Any, Generic, TypeVar
++
++_CACHE_KEY_VERSION = b"vllm-rwkv7-state-prefix-v1\0"
++DEFAULT_RWKV_STATE_CACHE_BLOCK_SIZE = 64
++DEFAULT_RWKV_STATE_CACHE_CAPACITY = 8
++
++T = TypeVar("T")
++
++
++def get_rwkv_state_prefix_cache_config(
++    vllm_config: Any,
++) -> tuple[bool, int, int]:
++    additional_config = getattr(vllm_config, "additional_config", None)
++    if not isinstance(additional_config, dict):
++        return (
++            False,
++            DEFAULT_RWKV_STATE_CACHE_CAPACITY,
++            DEFAULT_RWKV_STATE_CACHE_BLOCK_SIZE,
++        )
++    return (
++        bool(additional_config.get("rwkv_state_prefix_cache", False)),
++        int(
++            additional_config.get(
++                "rwkv_state_prefix_cache_capacity",
++                DEFAULT_RWKV_STATE_CACHE_CAPACITY,
++            )
++        ),
++        int(
++            additional_config.get(
++                "rwkv_state_prefix_cache_block_size",
++                DEFAULT_RWKV_STATE_CACHE_BLOCK_SIZE,
++            )
++        ),
++    )
++
++
++def rwkv_state_prefix_key(token_ids: Sequence[int], num_tokens: int) -> bytes:
++    """Return a stable key for the first ``num_tokens`` prompt tokens."""
++    if num_tokens <= 0 or num_tokens > len(token_ids):
++        raise ValueError(
++            f"Invalid RWKV7 prefix length {num_tokens} for {len(token_ids)} tokens"
++        )
++
++    digest = sha256(_CACHE_KEY_VERSION)
++    digest.update(pack("<I", num_tokens))
++    try:
++        packed_tokens = array("I", token_ids[:num_tokens])
++    except (OverflowError, TypeError) as exc:
++        raise ValueError("Invalid RWKV7 prompt token id") from exc
++    if packed_tokens.itemsize != 4:
++        raise RuntimeError("RWKV7 state-cache keys require 32-bit unsigned integers")
++    if sys.byteorder != "little":
++        packed_tokens.byteswap()
++    digest.update(packed_tokens.tobytes())
++    return digest.digest()
++
++
++def rwkv_state_cache_positions(
++    max_num_tokens: int,
++    block_size: int,
++) -> tuple[int, ...]:
++    """Return reusable recurrent-state boundaries up to ``max_num_tokens``."""
++    if block_size <= 0:
++        raise ValueError("RWKV7 state-cache block size must be positive")
++    if max_num_tokens <= 0:
++        return ()
++
++    return tuple(range(block_size, max_num_tokens + 1, block_size))
++
++
++def is_rwkv_state_cache_position(
++    num_tokens: int,
++    prompt_len: int,
++    block_size: int,
++) -> bool:
++    """Return whether a completed prefill state should be snapshotted."""
++    return 0 < num_tokens < prompt_len and num_tokens % block_size == 0
++
++
++class RWKVStatePrefixCache(Generic[T]):
++    """Small process-local LRU used by RWKV scheduler and worker state caches."""
++
++    def __init__(self, capacity: int) -> None:
++        if capacity <= 0:
++            raise ValueError("RWKV7 state-cache capacity must be positive")
++        self.capacity = capacity
++        self._entries: OrderedDict[bytes, T] = OrderedDict()
++
++    def __len__(self) -> int:
++        return len(self._entries)
++
++    def clear(self) -> None:
++        self._entries.clear()
++
++    def get(self, key: bytes) -> T | None:
++        value = self._entries.get(key)
++        if value is not None:
++            self._entries.move_to_end(key)
++        return value
++
++    def put(self, key: bytes, value: T) -> None:
++        self._entries[key] = value
++        self._entries.move_to_end(key)
++        while len(self._entries) > self.capacity:
++            self._entries.popitem(last=False)
++
++    def find_longest(
++        self,
++        token_ids: Sequence[int],
++        max_num_tokens: int,
++        block_size: int,
++    ) -> tuple[int, T | None]:
++        for num_tokens in reversed(
++            rwkv_state_cache_positions(max_num_tokens, block_size)
++        ):
++            value = self.get(rwkv_state_prefix_key(token_ids, num_tokens))
++            if value is not None:
++                return num_tokens, value
++        return 0, None
+diff --git a/vllm/v1/worker/gpu/model_states/rwkv.py b/vllm/v1/worker/gpu/model_states/rwkv.py
+index 1be8f5f60..b1463aab7 100644
+--- a/vllm/v1/worker/gpu/model_states/rwkv.py
++++ b/vllm/v1/worker/gpu/model_states/rwkv.py
+@@ -11,6 +11,12 @@ from vllm.logger import init_logger
+ from vllm.tasks import GenerationTask
+ from vllm.v1.core.sched.output import NewRequestData
+ from vllm.v1.kv_cache_interface import KVCacheConfig
++from vllm.v1.rwkv_state_prefix_cache import (
++    RWKVStatePrefixCache,
++    get_rwkv_state_prefix_cache_config,
++    is_rwkv_state_cache_position,
++    rwkv_state_prefix_key,
++)
+ from vllm.v1.worker.gpu.input_batch import InputBatch
+ from vllm.v1.worker.gpu.mm.encoder_cache import EncoderCache
+ from vllm.v1.worker.gpu.model_states.interface import ModelState
+@@ -19,6 +25,8 @@ from vllm.v1.worker.utils import AttentionGroup
+
+ logger = init_logger(__name__)
+
++RWKVStateSnapshot = tuple[torch.Tensor, torch.Tensor, torch.Tensor]
++
+
+ class RWKV7ModelState(ModelState):
+     """Dense batched recurrent state for RWKV7."""
+@@ -103,6 +111,18 @@ class RWKV7ModelState(ModelState):
+         self.decode_req_slots: set[int] = set()
+         self._prefill_req_slots: list[int] = []
+         self._prefill_becomes_decode: list[bool] = []
++        self._prefill_cache_entries: list[tuple[int, bytes]] = []
++        self._state_cache_tokens: dict[int, list[int]] = {}
++        (
++            state_prefix_cache_enabled,
++            state_prefix_cache_capacity,
++            self.state_prefix_cache_block_size,
++        ) = get_rwkv_state_prefix_cache_config(vllm_config)
++        self.state_prefix_cache: RWKVStatePrefixCache[RWKVStateSnapshot] | None = (
++            RWKVStatePrefixCache(state_prefix_cache_capacity)
++            if state_prefix_cache_enabled
++            else None
++        )
+
+     def _reset_mappings(self) -> None:
+         self.req_slot_to_row = [-1] * self.max_num_reqs
+@@ -111,6 +131,8 @@ class RWKV7ModelState(ModelState):
+         self.decode_req_slots = set()
+         self._prefill_req_slots = []
+         self._prefill_becomes_decode = []
++        self._prefill_cache_entries = []
++        self._state_cache_tokens = {}
+
+     def _state_slot_for_batch_entry(
+         self,
+@@ -256,7 +278,37 @@ class RWKV7ModelState(ModelState):
+
+         return [req_id for _order, req_id in sorted(enumerate(req_ids), key=key)]
+
++    @staticmethod
++    def _cacheable_request_tokens(
++        new_req_data: NewRequestData,
++    ) -> list[int] | None:
++        if (
++            new_req_data.prompt_token_ids is None
++            or new_req_data.prompt_embeds is not None
++            or new_req_data.lora_request is not None
++            or getattr(new_req_data, "cache_salt", None) is not None
++        ):
++            return None
++        return list(new_req_data.prompt_token_ids)
++
+     def add_request(self, req_index: int, new_req_data: NewRequestData) -> None:
++        cached_snapshot: RWKVStateSnapshot | None = None
++        cacheable_tokens = self._cacheable_request_tokens(new_req_data)
++        if self.state_prefix_cache is not None and new_req_data.num_computed_tokens:
++            if cacheable_tokens is None:
++                raise RuntimeError(
++                    "RWKV7 recurrent prefix hit cannot restore this request type"
++                )
++            cache_key = rwkv_state_prefix_key(
++                cacheable_tokens, new_req_data.num_computed_tokens
++            )
++            cached_snapshot = self.state_prefix_cache.get(cache_key)
++            if cached_snapshot is None:
++                raise RuntimeError(
++                    "RWKV7 scheduler reported a recurrent prefix hit without "
++                    "a matching worker state snapshot"
++                )
++
+         self.req_id_to_index[new_req_data.req_id] = req_index
+         if not self.free_rows:
+             raise RuntimeError("RWKV7 state pool is full")
+@@ -264,12 +316,21 @@ class RWKV7ModelState(ModelState):
+         self.free_rows.remove(row)
+         self.req_slot_to_row[req_index] = row
+         self.row_to_req_slot[row] = req_index
+-        self._zero_row(row)
++        if cacheable_tokens is not None:
++            self._state_cache_tokens[req_index] = cacheable_tokens
++        if cached_snapshot is None:
++            self._zero_row(row)
++        else:
++            shift_state, wkv_state, elapsed = cached_snapshot
++            self.shift_state[:, :, row].copy_(shift_state)
++            self.wkv_state[:, row].copy_(wkv_state)
++            self.elapsed[row].copy_(elapsed)
+
+     def remove_request(self, req_id: str) -> None:
+         req_index = self.req_id_to_index.pop(req_id, None)
+         if req_index is None:
+             return
++        self._state_cache_tokens.pop(req_index, None)
+         row = self.req_slot_to_row[req_index]
+         if row == -1:
+             return
+@@ -319,6 +380,8 @@ class RWKV7ModelState(ModelState):
+         self.shift_state.zero_()
+         self.wkv_state.zero_()
+         self.elapsed.zero_()
++        if self.state_prefix_cache is not None:
++            self.state_prefix_cache.clear()
+
+     def get_mm_embeddings(
+         self,
+@@ -334,6 +397,7 @@ class RWKV7ModelState(ModelState):
+         self._set_sampling_logits_fast_path(input_batch, False)
+         self._prefill_req_slots = []
+         self._prefill_becomes_decode = []
++        self._prefill_cache_entries = []
+         req_ids = getattr(input_batch, "req_ids", None)
+         is_dummy_batch = (
+             req_ids is not None
+@@ -417,6 +481,29 @@ class RWKV7ModelState(ModelState):
+                 prefill_entries.append(
+                     (batch_idx, req_slot, current_row, becomes_decode)
+                 )
++                cacheable_tokens = self._state_cache_tokens.get(req_slot)
++                if (
++                    self.state_prefix_cache is not None
++                    and cacheable_tokens is not None
++                    and num_computed_prefill is not None
++                    and scheduled_tokens is not None
++                ):
++                    num_computed = int(num_computed_prefill[batch_idx])
++                    num_scheduled = int(scheduled_tokens[batch_idx])
++                    completed_tokens = num_computed + num_scheduled
++                    if is_rwkv_state_cache_position(
++                        completed_tokens,
++                        len(cacheable_tokens),
++                        self.state_prefix_cache_block_size,
++                    ):
++                        self._prefill_cache_entries.append(
++                            (
++                                req_slot,
++                                rwkv_state_prefix_key(
++                                    cacheable_tokens, completed_tokens
++                                ),
++                            )
++                        )
+             else:
+                 decode_row = self._mark_resident_row_decode(req_slot)
+                 scheduled_decode_req_slots.add(req_slot)
+@@ -573,12 +660,28 @@ class RWKV7ModelState(ModelState):
+     ) -> None:
+         if not self._prefill_req_slots:
+             return
++        if self.state_prefix_cache is not None:
++            for req_slot, cache_key in self._prefill_cache_entries:
++                row = self.req_slot_to_row[req_slot]
++                if row < 0:
++                    raise RuntimeError(
++                        "RWKV7 recurrent state row disappeared before snapshot"
++                    )
++                self.state_prefix_cache.put(
++                    cache_key,
++                    (
++                        self.shift_state[:, :, row].clone(),
++                        self.wkv_state[:, row].clone(),
++                        self.elapsed[row].clone(),
++                    ),
++                )
+         for scratch_row, req_slot in enumerate(self._prefill_req_slots):
+             if self._prefill_becomes_decode[scratch_row]:
+                 self._mark_resident_row_decode(req_slot)
+         self._validate_decode_membership()
+         self._prefill_req_slots = []
+         self._prefill_becomes_decode = []
++        self._prefill_cache_entries = []
+
+     def has_pending_postprocess_state(self) -> bool:
+         return bool(self._prefill_req_slots)

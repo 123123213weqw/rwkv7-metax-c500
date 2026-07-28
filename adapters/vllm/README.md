@@ -28,7 +28,13 @@ registration import omitted by the reduced RWKV branch and guards an optional
 FP4 overload that the MetaX operator library does not publish. The fifth lets
 the compiled rapid sampler run on an out-of-tree CUDA-compatible platform, and
 the sixth keeps JIT monitoring operational with vendor Triton builds that do
-not expose the newer `triton.knobs` API. The seventh adapts a Triton pointer
+not expose the newer `triton.knobs` API. The ninth adds an opt-in RWKV-aware
+prefix cache behind the public `enable_prefix_caching=True` setting. It hashes
+complete token blocks in the scheduler and stores bounded GPU snapshots of the
+corresponding recurrent shift/WKV state in the worker. Generic KV block caching
+remains disabled for RWKV; unsupported LoRA, prompt-embedding, salted-cache and
+KV-transfer combinations bypass or fail closed instead of reusing an unsafe
+state. The seventh adapts a Triton pointer
 helper to the vendor compiler's constexpr representation. The eighth adds a
 registered RWKV channel-mix safety switch so a hardware plugin can select the
 dense path when the CUDA-specific no-FC sparse kernels are not validated.
@@ -75,3 +81,14 @@ token before A completes, and matches both requests against their solo greedy
 references. This closes one exact overlapping-arrival correctness cell, not
 the full arrival-rate/model/shape matrix, prefix-cache hit rate, preemption, or
 performance parity.
+
+The public 2.9B recurrent prefix-state cache gate is recorded in
+`evidence/c500_vllm_state_prefix_cache_20260728`. Four requests each restore a
+128-token cached state while an unrelated control request reports zero cached
+tokens. The request hit rate is `0.8`, every cache-enabled greedy output exactly
+matches cache-disabled generation, and median shared-prefix TTFT is `0.7007x`
+the cache-disabled row. The complete mixed batch is `1.0512x` slower because it
+also measures cache writes and the cold control, so this is a state-cache
+correctness and hit-latency cell rather than an aggregate throughput claim.
+Cross-process sharing, preemption restore, eviction stress and the full
+model/shape matrix remain separate gates.

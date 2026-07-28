@@ -79,10 +79,15 @@ The 2.9B public vLLM asynchronous gate submits request B only after request A
 starts streaming, schedules B before A completes, and reproduces both solo
 greedy references exactly; see
 [`evidence/c500_vllm_dynamic_batch_20260728`](evidence/c500_vllm_dynamic_batch_20260728/README.md).
+The 2.9B public vLLM recurrent prefix-state cache gate restores 128 cached
+tokens for four shared-prefix requests, keeps an unrelated control at zero,
+reaches an 80% request hit rate and preserves every greedy token; shared-prefix
+median TTFT is 29.9% lower in the cache-enabled A/B. See
+[`evidence/c500_vllm_state_prefix_cache_20260728`](evidence/c500_vllm_state_prefix_cache_20260728/README.md).
 Optimized HF and the remaining full chunked-prefill matrix, continuously
-arriving batch/model matrix, prefix-cache metrics, preemption, performance
+arriving batch/model matrix, state-cache eviction/preemption, performance
 matrix, parallelism, quantization and speculative gates remain tracked
-independently from these completed Engine and operator gates.
+independently from these completed exact Engine and operator cells.
 
 ## License
 
