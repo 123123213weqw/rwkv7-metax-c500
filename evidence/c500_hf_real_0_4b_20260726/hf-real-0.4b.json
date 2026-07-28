@@ -1,0 +1,36 @@
+{
+  "batch_sizes": [
+    1,
+    8
+  ],
+  "chunked_prefill_cosine": 0.9999954700469971,
+  "device": "MetaX C500",
+  "dtype": "fp16",
+  "forward_cosine_vs_cpu_fp32": 0.9999972581863403,
+  "forward_ms": 206.92900381982327,
+  "generated_text": " Hello! How can I assist you today",
+  "generated_token_ids": [
+    36786,
+    34,
+    20063,
+    21413,
+    308,
+    45221,
+    22799,
+    39971
+  ],
+  "last_observed_fast_token_backend": null,
+  "model": "rwkv7-g1d-0.4b-hf",
+  "peak_memory_bytes": 1155210240,
+  "prompt_tokens": 8,
+  "python": "3.10.10",
+  "requested_backend": "eager",
+  "save_reload_cosine": 0.9999954700469971,
+  "schema": "rwkv7-metax-c500-hf-real-checkpoint-v1",
+  "selected_cache_batch_size": 3,
+  "source_commit": "9d7dbc9213f0fb6b021d8dd0e3a828dad5fcd4af",
+  "split_prefill_cosine": 0.9999954700469971,
+  "status": "pass",
+  "torch": "2.8.0+metax3.5.3.9",
+  "torch_cuda": "11.6"
+}

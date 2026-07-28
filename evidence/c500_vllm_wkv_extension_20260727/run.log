@@ -1,0 +1,31 @@
+[1/3] /opt/maca/tools/cu-bridge/bin/gnu -MMD -MF rwkv7_wkv_fp32_v2.o.d -DTORCH_EXTENSION_NAME=rwkv7_wkv_fp32_v2_c500 -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1013\" -DUSE_MACA -DNV_ARCH_A100 -isystem /opt/conda/lib/python3.10/site-packages/torch/include -isystem /opt/conda/lib/python3.10/site-packages/torch/include/torch/csrc/api/include -isystem /opt/maca/include -isystem /opt/maca/include/mcr -isystem /opt/maca/include/mcblas -isystem /opt/maca/include/mcfft -isystem /opt/maca/include/mcsolver -isystem /opt/maca/include/mcdnn -isystem /opt/maca/include/common -isystem /opt/maca/include/mcsparse -isystem /opt/maca/include/mcrand -isystem /opt/maca/include/mckl -isystem /opt/maca/include/mcsml -isystem /opt/maca/include/mctx -isystem /opt/maca/include/thrust/detail -isystem /opt/maca/tools/cu-bridge/include -isystem /opt/conda/lib/python3.10/site-packages/torch/include/ATen/native/cuda -isystem /opt/maca/tools/cu-bridge/include -isystem /opt/conda/include/python3.10 -fPIC -std=c++17 -O3 -c <private-workdir>/projects/vllm-rwkv-7d16dbf/csrc/rwkv7/rwkv7_wkv_fp32_v2.cpp -o rwkv7_wkv_fp32_v2.o
+[2/3] /opt/maca/tools/cu-bridge/bin/cucc --generate-dependencies-with-compile --dependency-output rwkv7_wkv_fp32_v2.cuda.o.d -DTORCH_EXTENSION_NAME=rwkv7_wkv_fp32_v2_c500 -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1013\" -DUSE_MACA -DNV_ARCH_A100 -isystem /opt/conda/lib/python3.10/site-packages/torch/include -isystem /opt/conda/lib/python3.10/site-packages/torch/include/torch/csrc/api/include -isystem /opt/maca/include -isystem /opt/maca/include/mcr -isystem /opt/maca/include/mcblas -isystem /opt/maca/include/mcfft -isystem /opt/maca/include/mcsolver -isystem /opt/maca/include/mcdnn -isystem /opt/maca/include/common -isystem /opt/maca/include/mcsparse -isystem /opt/maca/include/mcrand -isystem /opt/maca/include/mckl -isystem /opt/maca/include/mcsml -isystem /opt/maca/include/mctx -isystem /opt/maca/include/thrust/detail -isystem /opt/maca/tools/cu-bridge/include -isystem /opt/conda/lib/python3.10/site-packages/torch/include/ATen/native/cuda -isystem /opt/maca/tools/cu-bridge/include -isystem /opt/conda/include/python3.10 -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ --expt-relaxed-constexpr -gencode=arch=compute_80,code=sm_80 -DUSE_MACA -DNV_ARCH_A100 --compiler-options '-fPIC' -O3 -std=c++17 -c <private-workdir>/projects/vllm-rwkv-7d16dbf/csrc/rwkv7/rwkv7_wkv_fp32_v2.cu -o rwkv7_wkv_fp32_v2.cuda.o
+<private-workdir>/projects/vllm-rwkv-7d16dbf/csrc/rwkv7/rwkv7_wkv_fp32_v2.cu:39:41: warning: set minimum blocks' number is illegal in Maca and the value will be ignored [-Wmaca-min-blocks-per-multiprocessor]
+   39 | __global__ __launch_bounds__(HEAD_SIZE, 2) void wkv_fp32_kernel(
+      |                                         ^
+1 warning generated when compiling for xcore1000.
+<private-workdir>/projects/vllm-rwkv-7d16dbf/csrc/rwkv7/rwkv7_wkv_fp32_v2.cu:39:41: warning: set minimum blocks' number is illegal in Maca and the value will be ignored [-Wmaca-min-blocks-per-multiprocessor]
+   39 | __global__ __launch_bounds__(HEAD_SIZE, 2) void wkv_fp32_kernel(
+      |                                         ^
+1 warning generated when compiling for xcore1000.
+<private-workdir>/projects/vllm-rwkv-7d16dbf/csrc/rwkv7/rwkv7_wkv_fp32_v2.cu:39:41: warning: set minimum blocks' number is illegal in Maca and the value will be ignored [-Wmaca-min-blocks-per-multiprocessor]
+   39 | __global__ __launch_bounds__(HEAD_SIZE, 2) void wkv_fp32_kernel(
+      |                                         ^
+1 warning generated when compiling for host.
+[3/3] /opt/maca/tools/cu-bridge/bin/gnu rwkv7_wkv_fp32_v2.o rwkv7_wkv_fp32_v2.cuda.o -shared -L/opt/conda/lib/python3.10/site-packages/torch/lib -lc10 -lc10_cuda -ltorch_cpu -ltorch_cuda -ltorch -ltorch_python -L/opt/maca/tools/cu-bridge/lib -lcudart -o rwkv7_wkv_fp32_v2_c500.so
+{
+  "compile_seconds": 20.10565964039415,
+  "device": "MetaX C500",
+  "output_cosine": 1.0,
+  "output_max_abs": 2.7939677238464355e-09,
+  "packed_tokens": 5,
+  "python": "3.10.10",
+  "requests": 2,
+  "schema": "rwkv7-metax-c500-vllm-wkv-extension-v1",
+  "state_cosine": 0.9999997615814209,
+  "state_max_abs": 3.725290298461914e-09,
+  "state_slots": 4,
+  "status": "pass",
+  "torch": "2.8.0+metax3.5.3.9",
+  "torch_cuda": "11.6"
+}

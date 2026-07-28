@@ -1,0 +1,35 @@
+INFO 07-27 21:41:24 [__init__.py:52] Available plugins for group vllm.platform_plugins:
+INFO 07-27 21:41:24 [__init__.py:54] - metax -> vllm_metax:register
+INFO 07-27 21:41:24 [__init__.py:57] All plugins in this group will be loaded. Set `VLLM_PLUGINS` to control which plugins to load.
+<private-workdir>/projects/vllm-metax-e9f17ce/vllm_metax/__init__.py:4: RuntimeWarning: Failed to read commit hash:
+No module named 'vllm_metax._version'
+  from .version import __version__, __version_tuple__  # noqa: F401
+INFO 07-27 21:41:24 [__init__.py:237] Platform plugin metax is activated
+INFO 07-27 21:41:24 [envs.py:116] Plugin sets VLLM_USE_FLASHINFER_SAMPLER to False. Reason: flashinfer sampler are not supported on maca
+INFO 07-27 21:41:24 [envs.py:116] Plugin sets VLLM_ENGINE_READY_TIMEOUT_S to 3600. Reason: set timeout to 3600s for model loading
+INFO 07-27 21:41:24 [envs.py:116] Plugin sets VLLM_FLOAT32_MATMUL_PRECISION to high. Reason: set float32 matmul precision to high for better performance on Maca platform
+INFO 07-27 21:41:24 [envs.py:116] Plugin sets VLLM_USE_V2_MODEL_RUNNER to False. Reason: v2 model runner is still under development and not fully tested on Maca platform, disable it by default
+{
+  "cuda_view_matches": true,
+  "device": "MetaX C500",
+  "fp16_output_cosine": 0.9999994039535522,
+  "fp16_output_max_abs": 1.33514404296875e-05,
+  "fp16_state_cosine": 0.9999999403953552,
+  "fp16_state_max_abs": 3.0517578125e-05,
+  "fp32io16_output_cosine": 1.0,
+  "fp32io16_output_max_abs": 0.0,
+  "fp32io16_state_cosine": 1.0,
+  "fp32io16_state_max_abs": 3.725290298461914e-09,
+  "packed_requests": 2,
+  "packed_tokens": 5,
+  "python": "3.10.10",
+  "rapid_sampling_state_device": "cuda:0",
+  "rapid_sampling_state_shape": [
+    128
+  ],
+  "schema": "rwkv7-metax-c500-vllm-installed-ops-v1",
+  "state_slots": 4,
+  "status": "pass",
+  "torch": "2.8.0+metax3.5.3.9",
+  "vllm": "0.17.0+c500.rwkv"
+}

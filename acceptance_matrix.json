@@ -1,0 +1,151 @@
+{
+  "schema": "rwkv7-metax-acceptance-v1",
+  "scope": "rwkv7-hf-vllm-sglang",
+  "models": [
+    {
+      "label": "0.1b",
+      "checkpoint": "rwkv7-g1d-0.1b-20260129-ctx8192"
+    },
+    {
+      "label": "0.4b",
+      "checkpoint": "rwkv7-g1d-0.4b-20260210-ctx8192"
+    },
+    {
+      "label": "1.5b",
+      "checkpoint": "rwkv7-g1g-1.5b-20260526-ctx8192"
+    },
+    {
+      "label": "2.9b",
+      "checkpoint": "rwkv7-g1g-2.9b-20260526-ctx8192"
+    },
+    {
+      "label": "7.2b",
+      "checkpoint": "rwkv7-g1g-7.2b-20260523-ctx8192"
+    },
+    {
+      "label": "13.3b",
+      "checkpoint": "rwkv7-g1g-13.3b-20260523-ctx8192"
+    }
+  ],
+  "inference_shapes": {
+    "batch_sizes": [1, 2, 4, 8],
+    "prompt_tokens": [128, 512, 2048],
+    "decode_tokens": [1, 128]
+  },
+  "training_shapes": {
+    "micro_batch_sizes": [1, 2, 4, 8],
+    "sequence_tokens": [128, 512, 2048],
+    "gradient_accumulation_allowed": true
+  },
+  "tracks": {
+    "hf": {
+      "public_apis": [
+        "AutoConfig",
+        "AutoTokenizer",
+        "AutoModelForCausalLM",
+        "generate_with_state_cache",
+        "save_reload"
+      ],
+      "training": [
+        "backward",
+        "Trainer",
+        "PEFT_LoRA_save_load_merge",
+        "TRL_SFT",
+        "TRL_DPO",
+        "TRL_GRPO",
+        "checkpoint_resume",
+        "DeepSpeed_Zero2",
+        "DeepSpeed_Zero3"
+      ],
+      "serving": [
+        "chunked_prefill",
+        "dynamic_batch_select",
+        "dynamic_batch_reorder",
+        "dynamic_batch_drop",
+        "state_cache_reuse"
+      ]
+    },
+    "vllm": {
+      "public_api": "vllm.LLM",
+      "required": [
+        "mixed_prefill_decode",
+        "continuous_dynamic_batching",
+        "chunked_prefill",
+        "per_request_state_slots",
+        "state_aware_prefix_cache",
+        "preemption_restore",
+        "TP",
+        "PP"
+      ]
+    },
+    "sglang": {
+      "public_api": "sglang.Engine",
+      "required": [
+        "mixed_prefill_decode",
+        "continuous_dynamic_batching",
+        "chunked_prefill",
+        "per_request_state_slots",
+        "state_aware_radix_cache",
+        "preemption_restore",
+        "TP",
+        "PP"
+      ]
+    }
+  },
+  "performance": {
+    "baselines": ["RWKV-LM", "Albatross"],
+    "same_checkpoint_card_dtype_shape": true,
+    "required_metrics": [
+      "prefill_tokens_per_second",
+      "decode_tokens_per_second",
+      "end_to_end_tokens_per_second",
+      "latency_p50_ms",
+      "latency_p95_ms",
+      "model_footprint_bytes",
+      "peak_device_memory_bytes",
+      "logits_cosine",
+      "greedy_token_match",
+      "recurrent_state_max_abs"
+    ],
+    "minimum_speed_ratio": 1.0,
+    "maximum_peak_memory_ratio": 1.0,
+    "minimum_logits_cosine_fp16_bf16": 0.999,
+    "greedy_token_match_required": true
+  },
+  "cache": {
+    "controlled_workload_repeated_prefix_fraction": 0.8,
+    "minimum_eligible_hit_rate_after_warmup": 0.8,
+    "output_must_match_cache_disabled": true,
+    "cross_request_state_leakage_allowed": false
+  },
+  "quantization": {
+    "modes": ["w8", "w4"],
+    "all_models_and_inference_shapes_required": true,
+    "footprint_must_drop": true,
+    "minimum_speed_ratio_vs_w16": 1.0,
+    "greedy_token_match_required": true,
+    "quality_target": "llama.cpp Q*_K_M class"
+  },
+  "speculative_decoding": {
+    "all_target_models_required": true,
+    "draft": "smaller compatible RWKV checkpoint or reproducibly trained tiny RWKV draft",
+    "target_greedy_output_match_required": true,
+    "acceptance_rate_required": true,
+    "speedup_required": true,
+    "dflash": "follow_up"
+  },
+  "hardware": {
+    "exact_c500_required": true,
+    "nvidia_families": ["pascal", "volta", "turing", "ampere", "ada", "hopper", "blackwell"],
+    "amd_required": true,
+    "unsupported_or_unavailable_status": "not_validated"
+  },
+  "claim_policy": {
+    "allowed_statuses": ["pass", "fail", "not_run", "not_validated"],
+    "missing_evidence_is_pass": false,
+    "smoke_implies_performance": false,
+    "microbenchmark_implies_end_to_end": false,
+    "single_model_implies_all_models": false,
+    "single_shape_implies_all_shapes": false
+  }
+}

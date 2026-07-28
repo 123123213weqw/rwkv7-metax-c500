@@ -1,0 +1,136 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 2292701..1d5902e 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -163,10 +163,11 @@ endif()
+ #
+ append_cmake_prefix_path("torch" "torch.utils.cmake_prefix_path")
+
+-# Ensure the 'nvcc' command is in the PATH
+-find_program(NVCC_EXECUTABLE nvcc)
++# Accept either NVIDIA nvcc or a vendor CUDA-compatible compiler such as MACA
++# cucc. CMAKE_CUDA_COMPILER remains the authoritative selected executable.
++find_program(NVCC_EXECUTABLE NAMES nvcc cucc)
+ if (CUDA_FOUND AND NOT NVCC_EXECUTABLE)
+-    message(FATAL_ERROR "nvcc not found")
++    message(FATAL_ERROR "neither nvcc nor a CUDA-compatible compiler was found")
+ endif()
+
+ #
+diff --git a/setup.py b/setup.py
+index 5b52743..3110e76 100644
+--- a/setup.py
++++ b/setup.py
+@@ -104,6 +104,49 @@ def is_ninja_available() -> bool:
+     return which("ninja") is not None
+
+
++def get_cuda_compiler() -> str:
++    override = os.getenv("VLLM_CUDA_COMPILER")
++    candidates = [override]
++    if CUDA_HOME is not None:
++        candidates.extend(
++            [
++                os.path.join(CUDA_HOME, "bin", "nvcc"),
++                os.path.join(CUDA_HOME, "bin", "cucc"),
++            ]
++        )
++    for candidate in candidates:
++        if candidate and os.path.isfile(candidate) and os.access(candidate, os.X_OK):
++            return candidate
++    raise FileNotFoundError("neither nvcc nor a CUDA-compatible cucc compiler was found")
++
++
++def get_cuda_version_compiler() -> str:
++    override = os.getenv("VLLM_CUDA_VERSION_COMPILER")
++    candidates = [override]
++    maca_path = os.getenv("MACA_PATH")
++    if maca_path:
++        candidates.append(os.path.join(maca_path, "tools", "cu-bridge", "bin", "cucc"))
++    candidates.append(get_cuda_compiler())
++    for candidate in candidates:
++        if candidate and os.path.isfile(candidate) and os.access(candidate, os.X_OK):
++            return candidate
++    raise FileNotFoundError("no CUDA version-reporting compiler was found")
++
++
++def get_cmake_command() -> str:
++    override = os.getenv("VLLM_CMAKE_COMMAND")
++    if override:
++        return override
++    if CUDA_HOME is not None and os.path.isfile(os.path.join(CUDA_HOME, "bin", "cucc")):
++        maca_cmake = which("cmake_maca")
++        if maca_cmake:
++            return maca_cmake
++    return "cmake"
++
++
++CMAKE_COMMAND = get_cmake_command()
++
++
+ def is_freethreaded():
+     return bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
+
+@@ -310,9 +353,9 @@ class cmake_build_ext(build_ext):
+         else:
+             # Default build tool to whatever cmake picks.
+             build_tool = []
+-        # Make sure we use the nvcc from CUDA_HOME
++        # Select nvcc or a vendor-provided CUDA-compatible compiler explicitly.
+         if _is_cuda() and CUDA_HOME is not None:
+-            cmake_args += [f"-DCMAKE_CUDA_COMPILER={CUDA_HOME}/bin/nvcc"]
++            cmake_args += [f"-DCMAKE_CUDA_COMPILER={get_cuda_compiler()}"]
+         elif _is_hip() and ROCM_HOME is not None:
+             cmake_args += [f"-DROCM_PATH={ROCM_HOME}"]
+
+@@ -321,14 +364,14 @@ class cmake_build_ext(build_ext):
+             cmake_args += other_cmake_args.split()
+
+         subprocess.check_call(
+-            ["cmake", ext.cmake_lists_dir, *build_tool, *cmake_args],
++            [CMAKE_COMMAND, ext.cmake_lists_dir, *build_tool, *cmake_args],
+             cwd=self.build_temp,
+         )
+
+     def build_extensions(self) -> None:
+         # Ensure that CMake is present and working
+         try:
+-            subprocess.check_output(["cmake", "--version"])
++            subprocess.check_output([CMAKE_COMMAND, "--version"])
+         except OSError as e:
+             raise RuntimeError("Cannot find CMake executable") from e
+
+@@ -355,7 +398,7 @@ class cmake_build_ext(build_ext):
+             *[f"--target={name}" for name in targets],
+         ]
+
+-        subprocess.check_call(["cmake", *build_args], cwd=self.build_temp)
++        subprocess.check_call([CMAKE_COMMAND, *build_args], cwd=self.build_temp)
+
+         # Install the libraries
+         for ext in self.extensions:
+@@ -374,7 +417,7 @@ class cmake_build_ext(build_ext):
+
+             # prefix here should actually be the same for all components
+             install_args = [
+-                "cmake",
++                CMAKE_COMMAND,
+                 "--install",
+                 ".",
+                 "--prefix",
+@@ -997,13 +1040,13 @@ def get_rocm_version():
+
+
+ def get_nvcc_cuda_version() -> Version:
+-    """Get the CUDA version from nvcc.
++    """Get the CUDA compatibility version from nvcc or cucc.
+
+     Adapted from https://github.com/NVIDIA/apex/blob/8b7a1ff183741dd8f9b87e7bafd04cfde99cea28/setup.py
+     """
+     assert CUDA_HOME is not None, "CUDA_HOME is not set"
+     nvcc_output = subprocess.check_output(
+-        [CUDA_HOME + "/bin/nvcc", "-V"], universal_newlines=True
++        [get_cuda_version_compiler(), "-V"], universal_newlines=True
+     )
+     output = nvcc_output.split()
+     release_idx = output.index("release") + 1

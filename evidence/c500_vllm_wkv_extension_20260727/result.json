@@ -1,0 +1,16 @@
+{
+  "compile_seconds": 20.10565964039415,
+  "device": "MetaX C500",
+  "output_cosine": 1.0,
+  "output_max_abs": 2.7939677238464355e-09,
+  "packed_tokens": 5,
+  "python": "3.10.10",
+  "requests": 2,
+  "schema": "rwkv7-metax-c500-vllm-wkv-extension-v1",
+  "state_cosine": 0.9999997615814209,
+  "state_max_abs": 3.725290298461914e-09,
+  "state_slots": 4,
+  "status": "pass",
+  "torch": "2.8.0+metax3.5.3.9",
+  "torch_cuda": "11.6"
+}
