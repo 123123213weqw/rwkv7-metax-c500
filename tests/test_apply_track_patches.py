@@ -1,8 +1,18 @@
+import importlib.util
 import json
 import subprocess
 from pathlib import Path
 
-from scripts.apply_track_patches import apply_patchset
+
+ROOT = Path(__file__).resolve().parents[1]
+SPEC = importlib.util.spec_from_file_location(
+    "rwkv7_metax_apply_track_patches",
+    ROOT / "scripts" / "apply_track_patches.py",
+)
+assert SPEC is not None and SPEC.loader is not None
+MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(MODULE)
+apply_patchset = MODULE.apply_patchset
 
 
 def _git(source: Path, *args: str) -> str:
