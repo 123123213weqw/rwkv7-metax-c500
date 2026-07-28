@@ -39,7 +39,10 @@ fills the missing vendor `torch.accelerator` memory methods from `torch.cuda`,
 and skips unrelated MLA, model and quant registrations removed by the reduced
 build. On the reduced C500 profile it defaults the no-FC channel-mix switch to
 the dense path while preserving explicit user override and all non-MetaX
-defaults. None of the patches modifies the host SDK installation.
+defaults. A second MetaX patch defaults the reduced profile to the `spawn`
+worker start method required by the C500 asynchronous EngineCore path while
+preserving explicit override. None of the patches modifies the host SDK
+installation.
 
 The first native WKV compile and numerical gate is recorded in
 `evidence/c500_vllm_native_build_20260727`. It is kernel evidence, not a
@@ -64,3 +67,11 @@ greedy outputs when submitted in A/B order and again in B/A order on the same
 Engine. This closes one exact recurrent-state isolation and completed-slot
 reuse cell. It is not prefix-cache reuse or hit-rate evidence and does not
 close continuously arriving dynamic batching or scheduler preemption.
+
+The public 2.9B continuously arriving gate is recorded in
+`evidence/c500_vllm_dynamic_batch_20260728`. It uses `AsyncLLM`, starts request
+A, submits B only after A's first streamed token, verifies that B produces a
+token before A completes, and matches both requests against their solo greedy
+references. This closes one exact overlapping-arrival correctness cell, not
+the full arrival-rate/model/shape matrix, prefix-cache hit rate, preemption, or
+performance parity.

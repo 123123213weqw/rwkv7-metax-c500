@@ -75,10 +75,14 @@ baseline exactly for prompt lengths 129/193; see
 The 2.9B public vLLM state-slot gate also matches solo generation under A/B and
 B/A batch order and after completed-slot reuse; see
 [`evidence/c500_vllm_state_slots_20260728`](evidence/c500_vllm_state_slots_20260728/README.md).
+The 2.9B public vLLM asynchronous gate submits request B only after request A
+starts streaming, schedules B before A completes, and reproduces both solo
+greedy references exactly; see
+[`evidence/c500_vllm_dynamic_batch_20260728`](evidence/c500_vllm_dynamic_batch_20260728/README.md).
 Optimized HF and the remaining full chunked-prefill matrix, continuously
-arriving batching, prefix-cache metrics, preemption, performance matrix,
-parallelism, quantization and speculative gates remain tracked independently
-from these completed Engine and operator gates.
+arriving batch/model matrix, prefix-cache metrics, preemption, performance
+matrix, parallelism, quantization and speculative gates remain tracked
+independently from these completed Engine and operator gates.
 
 ## License
 

@@ -3,6 +3,7 @@
   "upstream": "vllm_metax",
   "commit": "e9f17cef56f43ce9ee6b3426819842307b739c28",
   "patches": [
-    "metax-patches/0001-support-rwkv-reduced-profile.patch"
+    "metax-patches/0001-support-rwkv-reduced-profile.patch",
+    "metax-patches/0002-use-spawn-for-rwkv-async-engine.patch"
   ]
 }
